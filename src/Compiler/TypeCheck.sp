@@ -698,11 +698,16 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                             , env = localEnv
                             }
 
-                        'just (checkExpression pars full body @state) & full
+                        'just (doExpression @state { pars with canonicalExpression = body, expectedType = 'just full }) & full
 
                     'nothing:
                         typed & inferredType =
-                            inferExpression localEnv body @state
+                            doExpression @state
+                                {
+                                , canonicalExpression = body
+                                , env = localEnv
+                                , expectedType = 'nothing
+                                }
 
                         pos =
                             CA.patternPos def.pattern
@@ -827,8 +832,8 @@ maybe_map as fn Maybe a, fn a: b: Maybe b =
 DoExpressionPars =
     {
     , canonicalExpression as CA.Expression
-    , definitionName as Text
-    , definitionPos as Pos
+#    , definitionName as Text
+#    , definitionPos as Pos
     , env as Env
     , expectedType as Maybe TA.FullType
     }
@@ -915,133 +920,135 @@ doConstructor =
     TA.'constructor pos usr & type
 
 
-doParameter as fn DoExpressionPars, @State, Int, Maybe TA.ParType: TA.Parameter & TA.ParType & Env (fn pars, @state, index, expectedParameterType, caParameter: env) =
-    pars.env
-        (try caParameter as
+doParameter as fn DoExpressionPars, @State, Int, Maybe TA.ParType: TA.Parameter & TA.ParType & Env =
+    fn pars, @state, index, expectedParameterType, caParameter:
+    env =
+        pars.env
 
-             CA.'parameterPattern originalUni caPattern:
-                 try expectedParameterType as
+    try caParameter as
 
-                     'nothing:
-                         out =
-                             inferPattern env @state originalUni caPattern
+        CA.'parameterPattern originalUni caPattern:
+            try expectedParameterType as
 
-                         Dict.each (TA.typeTyvars out.patternType) fn tyvarId, _:
-                             # Inside the function definition, the tyvars act as bound
-                             Hash.insert @state.boundTyvars tyvarId 'none
+                'nothing:
+                    out =
+                        inferPattern env @state originalUni caPattern
 
-                         fullType =
-                             { raw = out.patternType, uni = originalUni }
+                    Dict.each (TA.typeTyvars out.patternType) fn tyvarId, _:
+                        # Inside the function definition, the tyvars act as bound
+                        Hash.insert @state.boundTyvars tyvarId 'none
 
-                         TA.'parameterPattern fullType out.typedPattern & TA.'parSp fullType & out.env
+                    fullType =
+                        { raw = out.patternType, uni = originalUni }
 
-                     'just (TA.'parSp expectedPatternType):
-                         uni =
-                             translateUni env.annotatedUnivarsByOriginalId originalUni
+                    TA.'parameterPattern fullType out.typedPattern & TA.'parSp fullType & out.env
 
-                         addErrorIf (uni /= expectedPatternType.uni) env (CA.patternPos pa) ('errorUniquenessDoesNotMatchParameter uni full) @state
+                'just (TA.'parSp expectedPatternType):
+                    uni =
+                        translateUni env.annotatedUnivarsByOriginalId originalUni
 
-                         out =
-                             checkPattern env @state expectedPatternType originalUni caPattern
+                    addErrorIf (uni /= expectedPatternType.uni) env (CA.patternPos pa) ('errorUniquenessDoesNotMatchParameter uni full) @state
 
-                         taPattern =
-                             TA.'parameterPattern expectedPatternType out.typedPattern
+                    out =
+                        checkPattern env @state expectedPatternType originalUni caPattern
 
-                         taPattern & TA.'parSp expectedPatternType & out.env
+                    taPattern =
+                        TA.'parameterPattern expectedPatternType out.typedPattern
 
-                     'just (TA.'parRe _):
-                         addError env (CA.patternPos pa) 'errorRecyclingDoesNotMatch @state
+                    taPattern & TA.'parSp expectedPatternType & out.env
 
-                         o =
-                             inferPattern env 'uni pa @state
+                'just (TA.'parRe _):
+                    addError env (CA.patternPos pa) 'errorRecyclingDoesNotMatch @state
 
-                         { raw = o.patternType, uni = 'uni } & (o.typedPattern & o.env)
+                    o =
+                        inferPattern env 'uni pa @state
 
-             CA.'parameterRecycle pos name:
-                 raw =
-                     try expectedParType as
+                    { raw = o.patternType, uni = 'uni } & (o.typedPattern & o.env)
 
-                         'just (TA.'parSp _):
-                             addError env pos 'errorRecyclingDoesNotMatch @state
+        CA.'parameterRecycle pos name:
+            raw =
+                try expectedParType as
 
-                             TA.'typeError
+                    'just (TA.'parSp _):
+                        addError env pos 'errorRecyclingDoesNotMatch @state
 
-                         'just (TA.'parRe expectedRaw):
-                             expectedRaw
+                        TA.'typeError
 
-                         'nothing:
-                             tyvarId =
-                                 newTyvarId @state
+                    'just (TA.'parRe expectedRaw):
+                        expectedRaw
 
-                             Hash.insert @state.boundTyvars tyvarId 'none
+                    'nothing:
+                        tyvarId =
+                            newTyvarId @state
 
-                             TA.'typeVar Pos.'g tyvarId
+                        Hash.insert @state.boundTyvars tyvarId 'none
 
-                 variable as Instance =
-                     {
-                     , definedAt = pos
-                     , freeTyvars = Dict.empty
-                     , freeUnivars = Dict.empty
-                     , type = { raw, uni = 'uni }
-                     }
+                        TA.'typeVar Pos.'g tyvarId
 
-                 localEnv as Env =
-                     # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
-                     { env with variables = Dict.insert ('refLocal name) variable .variables }
+            variable as Instance =
+                {
+                , definedAt = pos
+                , freeTyvars = Dict.empty
+                , freeUnivars = Dict.empty
+                , type = { raw, uni = 'uni }
+                }
 
-                 TA.'parameterRecycle pos raw name & TA.'parRe raw & localEnv
+            localEnv as Env =
+                # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
+                { env with variables = Dict.insert ('refLocal name) variable .variables }
 
-             CA.'parameterPlaceholder num:
-                 #
-                 #     (someFunction a __ b __)
-                 #     |
-                 #     V
-                 #     (fn p1 p2: someFunction a p1 b p2)
-                 #
-                 try expectedParType as
+            TA.'parameterRecycle pos raw name & TA.'parRe raw & localEnv
 
-                     'just (TA.'parRe _):
-                         todo "TA.ParRe"
+        CA.'parameterPlaceholder num:
+            #
+            #     (someFunction a __ b __)
+            #     |
+            #     V
+            #     (fn p1 p2: someFunction a p1 b p2)
+            #
+            try expectedParType as
 
-                     'just (TA.'parSp type):
-                         variable as Instance =
-                             {
-                             , definedAt = Pos.'g
-                             , freeTyvars = Dict.empty
-                             , freeUnivars = Dict.empty
-                             , type
-                             }
+                'just (TA.'parRe _):
+                    todo "TA.ParRe"
 
-                         TA.'parameterPlaceholder type num & { env with variables = Dict.insert ('refPlaceholder num) variable .variables }
+                'just (TA.'parSp type):
+                    variable as Instance =
+                        {
+                        , definedAt = Pos.'g
+                        , freeTyvars = Dict.empty
+                        , freeUnivars = Dict.empty
+                        , type
+                        }
 
-                     'nothing:
-                         tyvarId =
-                             newTyvarId @state
+                    TA.'parameterPlaceholder type num & { env with variables = Dict.insert ('refPlaceholder num) variable .variables }
 
-                         Hash.insert @state.boundTyvars tyvarId 'none
+                'nothing:
+                    tyvarId =
+                        newTyvarId @state
 
-                         raw =
-                             TA.'typeVar Pos.'g tyvarId
+                    Hash.insert @state.boundTyvars tyvarId 'none
 
-                         univarId =
-                             newTyvarId @state
+                    raw =
+                        TA.'typeVar Pos.'g tyvarId
 
-                         type =
-                             { raw, uni = 'depends univarId }
+                    univarId =
+                        newTyvarId @state
 
-                         instance as Instance =
-                             {
-                             , definedAt = Pos.'g
-                             , freeTyvars = Dict.empty
-                             , freeUnivars = Dict.empty
-                             , type
-                             }
+                    type =
+                        { raw, uni = 'depends univarId }
 
-                         newEnv as Env =
-                             { env with variables = Dict.insert ('refPlaceholder num) instance .variables }
+                    instance as Instance =
+                        {
+                        , definedAt = Pos.'g
+                        , freeTyvars = Dict.empty
+                        , freeUnivars = Dict.empty
+                        , type
+                        }
 
-                         TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
-        )
+                    newEnv as Env =
+                        { env with variables = Dict.insert ('refPlaceholder num) instance .variables }
+
+                    TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
 doFunction as fn DoExpressionPars, @State, Pos, [ CA.Parameter ], CA.Expression: TA.Expression & TA.FullType =
@@ -1088,7 +1095,13 @@ doFunction as fn DoExpressionPars, @State, Pos, [ CA.Parameter ], CA.Expression:
             envX
 
     typedBody & bodyType =
-        doExpression { pars with env = bodyEnv } @state expectedBodyType body
+        doExpression
+            @state
+            { pars with
+            , canonicalExpression = body
+            , env = bodyEnv
+            , expectedType = expectedBodyType
+            }
 
     type as TA.RawType =
         {
@@ -1110,7 +1123,12 @@ doCall as fn DoExpressionPars, @State, Pos, CA.Expression, [ CA.Argument ]: TA.E
         pars
 
     typedReference & inferredReferenceType =
-        inferExpression env reference @state
+                            doExpression @state
+                                {
+                                , canonicalExpression = reference
+                                , env
+                                , expectedType = 'nothing
+                                }
 
     typedArguments as [ TA.Argument ] =
         givenArgs >> List.map (fn arg: inferArgument env arg @state) __
@@ -1205,7 +1223,7 @@ doCall as fn DoExpressionPars, @State, Pos, CA.Expression, [ CA.Argument ]: TA.E
 inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, maybeExt, caAttrs, @state:
     taAttrs as Dict Name (TA.Expression & TA.FullType) =
-        Dict.map (fn name, value: inferExpression { env with context = 'context_Argument name .context } value @state) caAttrs
+        Dict.map (fn name, value: doExpression @state { canonicalExpression = value, env, expectedType = 'nothing }) caAttrs
 
     typedAttrs as Dict Name TA.Expression =
         Dict.map (fn k, v: Tuple.first v) taAttrs
@@ -1225,7 +1243,7 @@ inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State
 
         'just caExt:
             typedExt & extType =
-                inferExpression env caExt @state
+                doExpression @state { env, canonicalExpression caExt, expectedType = 'nothing }yy
 
             finalType as TA.RawType =
                 try extType.raw as
@@ -1277,7 +1295,7 @@ doRecord as fn DoExpressionPars, @State, Pos, Maybe CA.Expression, Dict Name CA.
         'just ext & 'just { with  raw = TA.'typeRecord _ 'nothing typeByName }:
             # ext must have type expectedType
             typedExt =
-                checkExpression pars expectedType ext @state
+                doExpression @state { pars with canonicalExpression = ext, expectedType = 'just expectedType }
 
             zzz =
                 fn attrName, attrExpr:
@@ -1287,13 +1305,13 @@ doRecord as fn DoExpressionPars, @State, Pos, Maybe CA.Expression, Dict Name CA.
                             addError pars.env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
 
                             # This is not super clean, but since it's an error condition, it's probably fine
-                            Tuple.first (inferExpression pars.env attrExpr @state)
+                            Tuple.first (doExpression @state { env = pars.env, canonicalExpression = attrExpr, expectedType = 'nothing })
 
                         'just attrType:
                             fullAttrType =
                                 { raw = attrType, uni = expectedType.uni }
 
-                            checkExpression pars fullAttrType attrExpr @state
+                            doExpression @state { pars with canonicalExpression = attrExpr, expectedType = 'just fullAttrType }
 
             # all valueByName attrs must be in typeByName
             typedValueByName =
@@ -1313,7 +1331,16 @@ doRecord as fn DoExpressionPars, @State, Pos, Maybe CA.Expression, Dict Name CA.
                 'none
 
             typedAttrs =
-                both >> Dict.map (fn name, value & type: checkExpression pars { raw = type, uni = expectedType.uni } value @state) __
+                Dict.map
+                    (fn name, value & type:
+                         doExpression
+                             @state
+                             { pars with
+                             , canonicalExpression = value
+                             , expectedType = 'just { raw = type, uni = expectedType.uni }
+                             }
+                    )
+                    both
 
             TA.'record pos 'nothing typedAttrs
 
@@ -1324,15 +1351,30 @@ doRecord as fn DoExpressionPars, @State, Pos, Maybe CA.Expression, Dict Name CA.
 
 
 doExpression as fn @State, DoExpressionPars: TA.Expression & TA.FullType =
-    fn pars, @state:
+    fn @state, pars:
     try pars.caExpression as
-        CA.'literalNumber pos n: doLiteralNumber pars @state pos n
-        CA.'literalText pos text: doLiteralText pars @state pos text
-        CA.'variable pos ref: doVariable pars @state pos ref
-        CA.'constructor pos usr: doConstructor pars @state pos usr
-        CA.'fn pos fnPars body: doFunction pars @state pos fnPars body
-        CA.'call pos reference args: doCall pars @state pos reference args
-        CA.'record pos maybeExt attrs: doRecord pars @state pos maybeExt attrs
+
+        CA.'literalNumber pos n:
+            doLiteralNumber @state pars pos n
+
+        CA.'literalText pos text:
+            doLiteralText @state pars pos text
+
+        CA.'variable pos ref:
+            doVariable @state pars pos ref
+
+        CA.'constructor pos usr:
+            doConstructor @state pars pos usr
+
+        CA.'fn pos fnPars body:
+            doFunction @state pars pos fnPars body
+
+        CA.'call pos reference args:
+            doCall @state pars pos reference args
+
+        CA.'record pos maybeExt attrs:
+            #
+            doRecord @state pars pos maybeExt attrs
 
 
 getTypeDef as fn Env, Pos, USR, @State: Maybe ([ Name & Pos ] & Self.Def) =
@@ -1447,8 +1489,14 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =
     fn env, pos, expectedRaw, value, caPatternsAndExpressions, @state:
+
     typedValue & valueType =
-        inferExpression env value @state
+        doExpression @state
+            {
+            , canonicalExpression = value
+            , env
+            , expectedType = 'nothing
+            }
 
     uni & patternsAndExpressions =
         'uni & []
@@ -1466,7 +1514,12 @@ doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.
                 }
 
             typedExpression & expressionType =
-                inferExpression newEnv exp @state
+                doExpression @state
+                    {
+                    , canonicalExpression = exp
+                    , env = newEnv
+                    , expectedType = 'nothing
+                    }
 
             addEquality newEnv (CA.expressionPos exp) 'why_TryExpression expectedRaw expressionType.raw @state
 
@@ -1543,7 +1596,12 @@ inferArgument as fn Env, CA.Argument, @State: TA.Argument =
 
         CA.'argumentExpression exp:
             typedExp & expType =
-                inferExpression env exp @state
+                doExpression @state
+                    {
+                    , canonicalExpression = exp
+                    , env
+                    , expectedType = 'nothing
+                    }
 
             TA.'argumentExpression expType typedExp
 
