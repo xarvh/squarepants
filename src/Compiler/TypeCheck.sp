@@ -691,8 +691,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                         full =
                             { raw, uni = def.uni }
 
-                        doExpression @state localEnv ('just full) body
-                        >> Tuple.mapFirst 'just __
+                        doExpression @state localEnv ('just full) body >> Tuple.mapFirst 'just __
 
                     'nothing:
                         typed & inferredType =
@@ -818,8 +817,7 @@ maybe_map as fn Maybe a, fn a: b: Maybe b =
     Maybe.map f m
 
 
-
-doLiteralNumber =
+doLiteralNumber as fn @State, Env, Maybe TA.FullType, Pos, Int: TA.Expression & TA.FullType =
     fn @state, env, expectedType, pos, n:
     typeIsCorrect =
         try expectedType as
@@ -827,16 +825,15 @@ doLiteralNumber =
             'just { with  raw = TA.'typeExact _ typeUsr [] }: typeUsr == CoreDefs.numberDef.usr
             'just _: 'false
 
-
     assertLocal typeIsCorrect env pos expectedType fn code, expectedType_:
         code
-        ..
-        """
+        .. """
 
         The annotation says that this number should be of type:
 
         """
         .. expectedType_
+
         """
 
         However, this is a number literal, which must always be of type `Number` (the one in the core library).
@@ -857,13 +854,13 @@ doLiteralText =
 
     assertLocal typeIsCorrect env pos expectedType fn code, expectedType_:
         code
-        ..
-        """
+        .. """
 
         The annotation says that this text should be of type:
 
         """
         .. expectedType_
+
         """
 
         However, this is a text literal, which must always be of type `Text` (the one in the core library).
@@ -876,12 +873,13 @@ doLiteralText =
 
 doVariable =
     fn @state, env, expectedType, pos, ref:
-
     type =
         try getVariableByRef ref env as
 
             'nothing:
                 addError env pos ('errorVariableNotFound ref) @state
+
+                fullTypeError
 
             'just variableInstance:
                 generalizedType =
@@ -912,7 +910,7 @@ doConstructor =
                     generalize env pos ('refGlobal usr) cons @state
 
                 # Constructor literal is always unique, so we don't care about uniqueness
-                maybe_map fn { with raw }:
+                maybe_map fn { with  raw }:
                     try raw as
 
                         TA.'typeExact _ _ _:
@@ -921,13 +919,13 @@ doConstructor =
                         _:
                             addErrorLocal @state env pos fn code:
                                 code
-                                ..
-                                """
+                                .. """
 
                                 The annotation says that this variant literal should be of type:
 
                                 """
                                 .. typeToHuman env raw
+
                                 """
 
                                 However variant literals must always be of a var(iant) type.
@@ -942,7 +940,6 @@ doConstructor =
 
 doParameter as fn @State, Env, Int, Maybe TA.ParType: TA.Parameter & TA.ParType & Env =
     fn @state, env, index, expectedParameterType, caParameter:
-
     try caParameter as
 
         CA.'parameterPattern originalUni caPattern:
@@ -1085,10 +1082,8 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
         'nothing:
             #
             List.repeat arity 'nothing & 'nothing >> 'ok
-
     >> onOk fn expectedParameterTypes & expectedBodyType:
     todo "check arity vs expectedParameterTypes"
-
     >> onOk fn _:
     !typedParameters =
         Array.fromList []
@@ -1133,9 +1128,8 @@ doCall as fn @State, Env, Maybe TA.FullType, Pos, CA.Expression, [ CA.Argument ]
     fn @state, env, expectedType, pos, reference, givenArgs:
     # `reference givenArg1 givenArg2 ...` must be of `expectedType`
 
-
     typedReference & inferredReferenceType =
-                            doExpression @state env 'nothing reference
+        doExpression @state env 'nothing reference
 
     typedArguments as [ TA.Argument ] =
         givenArgs >> List.map (fn arg: inferArgument env arg @state) __
@@ -1299,9 +1293,9 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
         _ & 'nothing:
             inferRecord env pos maybeCaExt caValueByName @state
 
-        'just ext & 'just { with  raw = TA.'typeRecord _ 'nothing typeByName }:
+        'just ext & 'just { raw = TA.'typeRecord tp 'nothing typeByName, uni }:
             # ext must have type expectedType
-            typedExt =
+            typedExt & _ =
                 doExpression @state env expectedType ext
 
             zzz =
@@ -1311,22 +1305,28 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
                         'nothing:
                             addError env pos ('errorRecordHasAttributesNotInAnnotation [ attrName ]) @state
 
-                            # This is not super clean, but since it's an error condition, it's probably fine
-                            Tuple.first (doExpression @state env 'nothing attrExpr)
+                            doExpression @state env 'nothing attrExpr
 
                         'just attrType:
                             fullAttrType =
                                 { raw = attrType, uni = expectedType.uni }
 
                             doExpression @state env ('just fullAttrType) attrExpr
+                    >> Tuple.first
 
             # all valueByName attrs must be in typeByName
-            typedValueByName =
-                Dict.map zzz valueByName
+            typedValueByName as Dict Name TA.Expression =
+                Dict.map zzz caValueByName
 
-            TA.'record pos ('just typedExt) typedValueByName
+            exp as TA.Expression =
+                TA.'record pos ('just typedExt) typedValueByName
 
-        'nothing & 'just { raw = TA.'typeRecord _ 'nothing typeByName }:
+            type as TA.FullType =
+                { raw = TA.'typeRecord tp 'nothing typeByName, uni }
+
+            exp & type
+
+        'nothing & 'just { raw = TA.'typeRecord tp 'nothing typeByName, uni }:
             aOnly & both & bOnly =
                 Dict.onlyBothOnly valueByName typeByName
 
@@ -1338,17 +1338,14 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
                 'none
 
             typedAttrs =
-                Dict.map (fn name, value & type: doExpression @state env ('just { raw = type, uni = expectedType.uni }) value) both
+                Dict.map (fn name, value & type: doExpression @state env ('just { raw = type, uni }) value) both
 
-            TA.'record pos 'nothing typedAttrs
+            TA.'record pos 'nothing typedAttrs & { raw = TA.'typeRecord tp 'nothing typeByName, uni }
 
         _ & 'just _:
             addErrorLocal "This is a literal record, which means its type is always a record type."
 
             TA.'error pos
-
-
-
 
 
 doExpression as fn @State, Env, Maybe TA.FullType, CA.Expression: TA.Expression & TA.FullType =
@@ -1490,9 +1487,9 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =
     fn env, pos, expectedRaw, value, caPatternsAndExpressions, @state:
-
     typedValue & valueType =
-        doExpression @state
+        doExpression
+            @state
             {
             , canonicalExpression = value
             , env
@@ -1515,7 +1512,8 @@ doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.
                 }
 
             typedExpression & expressionType =
-                doExpression @state
+                doExpression
+                    @state
                     {
                     , canonicalExpression = exp
                     , env = newEnv
@@ -1597,7 +1595,8 @@ inferArgument as fn Env, CA.Argument, @State: TA.Argument =
 
         CA.'argumentExpression exp:
             typedExp & expType =
-                doExpression @state
+                doExpression
+                    @state
                     {
                     , canonicalExpression = exp
                     , env
