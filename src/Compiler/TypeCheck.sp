@@ -338,15 +338,28 @@ addErrorIf as fn Bool, Env, Pos, Error_, @State: None =
 
 
 newAddError as fn @State, Env, Pos, Text: None =
-    todo ""
+    fn @state, env, pos, message:
+    [
+    , message
+    , "[[context: " .. Debug.toHuman env.context .. "]]"
+    ]
+    >> Error.'simple (getErrorModule env) pos __
+    >> Array.push @state.errors __
 
 
 newAddErrorIf as fn Bool, @State, Env, Pos, Text: None =
-    todo ""
+    fn cond, @state, env, pos, message:
+    if cond then
+        newAddError @state env pos message
+    else
+        'none
 
 
 newAddErrorMaybe as fn Maybe a, @State, Env, Pos, fn a: Text: None =
-    todo ""
+    fn maybe, @state, env, pos, getMessage:
+    try maybe as
+        'nothing: 'none
+        'just errorPayload: newAddError @state env pos (getMessage errorPayload)
 
 
 getConstructorByUsr as fn USR, Env: Maybe Instance =
