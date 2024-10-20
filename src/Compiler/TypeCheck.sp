@@ -337,6 +337,18 @@ addErrorIf as fn Bool, Env, Pos, Error_, @State: None =
     if test then addError env pos error @state else 'none
 
 
+newAddError as fn @State, Env, Pos, Text: None =
+    todo ""
+
+
+newAddErrorIf as fn Bool, @State, Env, Pos, Text: None =
+    todo ""
+
+
+newAddErrorMaybe as fn Maybe a, @State, Env, Pos, fn a: Text: None =
+    todo ""
+
+
 getConstructorByUsr as fn USR, Env: Maybe Instance =
     fn usr, env:
     Dict.get usr env.constructors
@@ -819,20 +831,28 @@ maybe_map as fn Maybe a, fn a: b: Maybe b =
 
 doLiteralNumber as fn @State, Env, Maybe TA.FullType, Pos, Int: TA.Expression & TA.FullType =
     fn @state, env, expectedType, pos, n:
-    typeIsCorrect =
+    maybeInvalidRaw =
         try expectedType as
-            'nothing: 'true
-            'just { with  raw = TA.'typeExact _ typeUsr [] }: typeUsr == CoreDefs.numberDef.usr
-            'just _: 'false
 
-    assertLocal typeIsCorrect env pos expectedType fn code, expectedType_:
-        code
-        .. """
+            'nothing:
+                'nothing
+
+            'just { with  raw = TA.'typeExact p typeUsr [] }:
+                if typeUsr == CoreDefs.numberDef.usr then
+                    'nothing
+                else
+                    'just (TA.'typeExact p typeUsr [])
+
+            'just { with  raw }:
+                'just raw
+
+    newAddErrorMaybe maybeInvalidRaw @state env pos fn invalidRaw:
+        """
 
         The annotation says that this number should be of type:
 
         """
-        .. expectedType_
+        .. typeToHuman env invalidRaw
 
         """
 
@@ -841,25 +861,33 @@ doLiteralNumber as fn @State, Env, Maybe TA.FullType, Pos, Int: TA.Expression & 
         The two types are not compatible!
         """
 
-    TA.'literalNumber pos n & { raw = expectedType, uni = 'uni }
+    TA.'literalNumber pos n & { raw = coreTypeNumber, uni = 'uni }
 
 
-doLiteralText =
+doLiteralText as fn @State, Env, Maybe TA.FullType, Pos, Text: TA.Expression & TA.FullType =
     fn @state, env, expectedType, pos, text:
-    typeIsCorrect =
+    maybeInvalidRaw =
         try expectedType as
-            'nothing: 'true
-            'just { with  raw = TA.'typeExact _ typeUsr [] }: typeUsr == CoreDefs.textDef.usr
-            'just _: 'false
 
-    assertLocal typeIsCorrect env pos expectedType fn code, expectedType_:
-        code
-        .. """
+            'nothing:
+                'nothing
+
+            'just { with  raw = TA.'typeExact p typeUsr [] }:
+                if typeUsr == CoreDefs.textDef.usr then
+                    'nothing
+                else
+                    'just (TA.'typeExact p typeUsr [])
+
+            'just { with  raw }:
+                'just raw
+
+    newAddErrorMaybe maybeInvalidRaw @state env pos fn invalidRaw:
+        """
 
         The annotation says that this text should be of type:
 
         """
-        .. expectedType_
+        .. typeToHuman env invalidRaw
 
         """
 
@@ -868,7 +896,7 @@ doLiteralText =
         The two types are not compatible!
         """
 
-    TA.'literalText pos n & { raw = coreTypeText, uni = 'uni }
+    TA.'literalText pos text & { raw = coreTypeText, uni = 'uni }
 
 
 doVariable =
@@ -917,21 +945,20 @@ doConstructor =
                             addEquality env pos 'why_Annotation generalizedType.raw raw @state
 
                         _:
-                            addErrorLocal @state env pos fn code:
-                                code
-                                .. """
+                            """
 
-                                The annotation says that this variant literal should be of type:
+                            The annotation says that this variant literal should be of type:
 
-                                """
-                                .. typeToHuman env raw
+                            """
+                            .. typeToHuman env raw
 
-                                """
+                            """
 
-                                However variant literals must always be of a var(iant) type.
+                            However variant literals must always be of a var(iant) type.
 
-                                The two types are not compatible!
-                                """
+                            The two types are not compatible!
+                            """
+                            >> newAddError @state env pos __
 
                 generalizedType
 
@@ -1066,7 +1093,7 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType: TA.Parameter & TA.ParType 
                     TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
-doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expression: TA.Expression & TA.FullType =
+doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expression: Result Text (TA.Expression & TA.FullType) =
     fn @state, env, expectedType, pos, caParameters, body:
     arity =
         List.length caParameters
@@ -1074,14 +1101,17 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
     try expectedType as
 
         'just { with  raw = TA.'typeFn _ parameterTypes returnType }:
-            List.map 'just parameterTypes & 'just returnType >> 'ok
+            List.map 'just parameterTypes & 'just returnType
+            #
+            >> 'ok
 
         'just _:
             'err "This expression is a function, which means its type is always a `fn` type."
 
         'nothing:
+            List.repeat arity 'nothing & 'nothing
             #
-            List.repeat arity 'nothing & 'nothing >> 'ok
+            >> 'ok
     >> onOk fn expectedParameterTypes & expectedBodyType:
     todo "check arity vs expectedParameterTypes"
     >> onOk fn _:
@@ -1309,7 +1339,7 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
 
                         'just attrType:
                             fullAttrType =
-                                { raw = attrType, uni = expectedType.uni }
+                                { raw = attrType, uni }
 
                             doExpression @state env ('just fullAttrType) attrExpr
                     >> Tuple.first
@@ -1328,7 +1358,7 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
 
         'nothing & 'just { raw = TA.'typeRecord tp 'nothing typeByName, uni }:
             aOnly & both & bOnly =
-                Dict.onlyBothOnly valueByName typeByName
+                Dict.onlyBothOnly caValueByName typeByName
 
             if aOnly /= Dict.empty then
                 addError env pos ('errorRecordHasAttributesNotInAnnotation (Dict.keys aOnly)) @state
@@ -1337,15 +1367,34 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
             else
                 'none
 
-            typedAttrs =
-                Dict.map (fn name, value & type: doExpression @state env ('just { raw = type, uni }) value) both
+            typedAttrs as Dict Name TA.Expression =
+                Dict.map (fn name, value & type: doExpression @state env ('just { raw = type, uni }) value >> Tuple.first) both
 
-            TA.'record pos 'nothing typedAttrs & { raw = TA.'typeRecord tp 'nothing typeByName, uni }
+            fullType as TA.FullType =
+                { raw = TA.'typeRecord tp 'nothing typeByName, uni }
 
-        _ & 'just _:
-            addErrorLocal "This is a literal record, which means its type is always a record type."
+            exp as TA.Expression =
+                TA.'record pos 'nothing typedAttrs
 
-            TA.'error pos
+            exp & fullType
+
+        _ & 'just { with  raw }:
+            """
+
+            The annotation says that this record literal should be of type:
+
+            """
+            .. typeToHuman env raw
+
+            """
+
+            However records must always be of a record type!
+
+            The two types are not compatible!
+            """
+            >> newAddError @state env pos __
+
+            TA.'error pos & fullTypeError
 
 
 doExpression as fn @State, Env, Maybe TA.FullType, CA.Expression: TA.Expression & TA.FullType =
