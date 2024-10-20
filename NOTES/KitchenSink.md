@@ -1,5 +1,7 @@
 Dev Blog? https://dev.to/
 
+https://quorumlanguage.com/evidence.html
+
 https://news.ycombinator.com/item?id=25592185
 https://news.ycombinator.com/item?id=25586852
 https://news.ycombinator.com/item?id=25585554
