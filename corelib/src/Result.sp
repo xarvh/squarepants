@@ -45,3 +45,10 @@ withDefault as fn a, Result e a: a =
     try result as
         'ok a: a
         'err _: default
+
+
+recoverFromError as fn fn err: a, fn None: Result err a: a =
+    fn errorToPayload, getResult:
+    try getResult 'none as
+        'ok payload: payload
+        'err error: errorToPayload

@@ -257,6 +257,7 @@ module =
       mapError
       fromMaybe
       withDefault
+      recoverFromError
 
 
 module =

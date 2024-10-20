@@ -1093,11 +1093,19 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType: TA.Parameter & TA.ParType 
                     TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
-doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expression: Result Text (TA.Expression & TA.FullType) =
+
+doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expression: TA.Expression & TA.FullType =
     fn @state, env, expectedType, pos, caParameters, body:
     arity =
         List.length caParameters
 
+    errorToOk as fn Text: TA.Expression & TA.FullType =
+        fn errorMessage:
+        newAddError @state env pos errorMessage
+
+        TA.'error pos & fullTypeError
+
+    Result.recoverFromError errorToOk fn _:
     try expectedType as
 
         'just { with  raw = TA.'typeFn _ parameterTypes returnType }:
@@ -1113,7 +1121,12 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
             #
             >> 'ok
     >> onOk fn expectedParameterTypes & expectedBodyType:
-    todo "check arity vs expectedParameterTypes"
+
+    if todo "check arity vs expectedParameterTypes" then
+        'err "wrong arity!!!"
+    else
+        'ok 'none
+
     >> onOk fn _:
     !typedParameters =
         Array.fromList []
@@ -1142,7 +1155,7 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
     typedBody & bodyType =
         doExpression @state bodyEnv expectedBodyType body
 
-    type as TA.RawType =
+    type as TA.FullType =
         {
         , raw = TA.'typeFn pos parameterTypes bodyType
         , uni = 'uni
