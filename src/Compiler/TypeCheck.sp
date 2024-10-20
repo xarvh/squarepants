@@ -938,7 +938,7 @@ doConstructor =
                     generalize env pos ('refGlobal usr) cons @state
 
                 # Constructor literal is always unique, so we don't care about uniqueness
-                maybe_map fn { with  raw }:
+                maybe_map expectedType fn { with  raw }:
                     try raw as
 
                         TA.'typeExact _ _ _:
@@ -974,7 +974,7 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
 
                 'nothing:
                     out =
-                        inferPattern env @state originalUni caPattern
+                        inferPattern env originalUni caPattern @state
 
                     Dict.each (TA.typeTyvars out.patternType) fn tyvarId, _:
                         # Inside the function definition, the tyvars act as bound
@@ -989,27 +989,36 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
                     uni =
                         translateUni env.annotatedUnivarsByOriginalId originalUni
 
-                    addErrorIf (uni /= expectedPatternType.uni) env (CA.patternPos pa) ('errorUniquenessDoesNotMatchParameter uni full) @state
+                    addErrorIf (uni /= expectedPatternType.uni) env (CA.patternPos caPattern) ('errorUniquenessDoesNotMatchParameter uni expectedPatternType) @state
 
-                    out =
-                        checkPattern env @state expectedPatternType originalUni caPattern
+                    taPattern & newEnv =
+                        checkPattern env expectedPatternType caPattern @state
 
-                    taPattern =
-                        TA.'parameterPattern expectedPatternType out.typedPattern
+                    taParameter as TA.Parameter =
+                        TA.'parameterPattern expectedPatternType taPattern
 
-                    taPattern & TA.'parSp expectedPatternType & out.env
+                    taParType as TA.ParType =
+                        TA.'parSp expectedPatternType
+
+                    taParameter & taParType & newEnv
 
                 'just (TA.'parRe _):
-                    addError env (CA.patternPos pa) 'errorRecyclingDoesNotMatch @state
+                    addError env (CA.patternPos caPattern) 'errorRecyclingDoesNotMatch @state
 
                     o =
-                        inferPattern env 'uni pa @state
+                        inferPattern env 'uni caPattern @state
 
-                    { raw = o.patternType, uni = 'uni } & (o.typedPattern & o.env)
+                    taParameter as TA.Parameter =
+                        TA.'parameterPattern { raw = o.patternType, uni = 'uni } o.typedPattern
+
+                    taParType as TA.ParType =
+                        TA.'parSp fullTypeError
+
+                    taParameter & taParType & o.env
 
         CA.'parameterRecycle pos name:
             raw =
-                try expectedParType as
+                try expectedParameterType as
 
                     'just (TA.'parSp _):
                         addError env pos 'errorRecyclingDoesNotMatch @state
@@ -1048,7 +1057,7 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
             #     V
             #     (fn p1 p2: someFunction a p1 b p2)
             #
-            try expectedParType as
+            try expectedParameterType as
 
                 'just (TA.'parRe _):
                     todo "TA.ParRe"
@@ -1062,7 +1071,10 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
                         , type
                         }
 
-                    TA.'parameterPlaceholder type num & { env with variables = Dict.insert ('refPlaceholder num) variable .variables }
+                    newEnv =
+                        { env with variables = Dict.insert ('refPlaceholder num) variable .variables }
+
+                    TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
                 'nothing:
                     tyvarId =
@@ -1093,7 +1105,6 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
                     TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
 
-
 doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expression: TA.Expression & TA.FullType =
     fn @state, env, expectedType, pos, caParameters, body:
     arity =
@@ -1121,12 +1132,10 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
             #
             >> 'ok
     >> onOk fn expectedParameterTypes & expectedBodyType:
-
     if todo "check arity vs expectedParameterTypes" then
         'err "wrong arity!!!"
     else
         'ok 'none
-
     >> onOk fn _:
     !typedParameters =
         Array.fromList []
@@ -1657,13 +1666,7 @@ inferArgument as fn Env, CA.Argument, @State: TA.Argument =
 
         CA.'argumentExpression exp:
             typedExp & expType =
-                doExpression
-                    @state
-                    {
-                    , canonicalExpression = exp
-                    , env
-                    , expectedType = 'nothing
-                    }
+                doExpression @state env 'nothing exp
 
             TA.'argumentExpression expType typedExp
 

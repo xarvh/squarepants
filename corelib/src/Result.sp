@@ -51,4 +51,4 @@ recoverFromError as fn fn err: a, fn None: Result err a: a =
     fn errorToPayload, getResult:
     try getResult 'none as
         'ok payload: payload
-        'err error: errorToPayload
+        'err error: errorToPayload error
