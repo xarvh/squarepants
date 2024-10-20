@@ -965,7 +965,7 @@ doConstructor =
     TA.'constructor pos usr & type
 
 
-doParameter as fn @State, Env, Int, Maybe TA.ParType: TA.Parameter & TA.ParType & Env =
+doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter & TA.ParType & Env =
     fn @state, env, index, expectedParameterType, caParameter:
     try caParameter as
 
@@ -1142,7 +1142,7 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
       ----> At the end of a Definition we take the type tyvars, see which ones are free, then resolve them.
     #]
     bodyEnv =
-        List.indexedFor2 env caParameter expectedParameterType fn index, caParameter, expectedParameterType, bodyEnvAcc:
+        List.indexedFor2 env caParameters expectedParameterTypes fn index, caParameter, expectedParameterType, bodyEnvAcc:
             typedParameter & parameterType & envX =
                 doParameter @state bodyEnvAcc index expectedParameterType caParameter
 
@@ -1157,12 +1157,12 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
 
     type as TA.FullType =
         {
-        , raw = TA.'typeFn pos parameterTypes bodyType
+        , raw = TA.'typeFn pos (Array.toList @parameterTypes) bodyType
         , uni = 'uni
         }
 
     expression =
-        TA.'fn pos typedParameters typedBody bodyType
+        TA.'fn pos (Array.toList @typedParameters) typedBody bodyType
 
     expression & type >> 'ok
 
