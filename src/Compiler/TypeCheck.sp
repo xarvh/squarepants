@@ -1534,6 +1534,48 @@ doRecordAccess as fn @State, Env, Maybe TA.FullType, Pos, Name, CA.Expression: T
     TA.'recordAccess pos attrName typedRecord & fullType
 
 
+doIfThenElse as fn @State, Env, Maybe TA.FullType, Pos, CA.Expression, CA.Expression, CA.Expression: TA.Expression & TA.FullType =
+    fn @state, env, maybeExpectedType, pos, caCondition, caTrue, caFalse:
+    # Should this be a check against bool instead?
+    typedCondition & conditionType =
+        doExpression @state env 'nothing caCondition
+
+    addEquality env pos 'why_IfCondition coreTypeBool conditionType.raw @state
+
+    typedTrue & trueType =
+        doExpression @state env maybeExpectedType caTrue
+
+    typedFalse & falseType =
+        doExpression @state env maybeExpectedType caFalse
+
+    fullType =
+        try maybeExpectedType as
+
+            'just expectedType:
+                expectedType
+
+            'nothing:
+                addEquality env pos 'why_IfBranches trueType.raw falseType.raw @state
+
+                # TODO What if "depends" tyvars get resolved to the same?
+                # Shouldn't we test this only AFTER solving constraints?
+                uni as Uniqueness =
+                    inferUni trueType.uni falseType.uni
+
+                { raw = trueType.raw, uni }
+
+    expression =
+        TA.'if
+            pos
+            {
+            , condition = typedCondition
+            , false = typedFalse
+            , true = typedTrue
+            }
+
+    expression & fullType
+
+
 doExpression as fn @State, Env, Maybe TA.FullType, CA.Expression: TA.Expression & TA.FullType =
     fn @state, env, type, exp:
     try exp as
@@ -1577,6 +1619,18 @@ doExpression as fn @State, Env, Maybe TA.FullType, CA.Expression: TA.Expression 
                 doExpression @state defEnv type rest
 
             TA.'letIn typedDef typedRest restType & restType
+
+        CA.'if pos { condition, false, true }:
+            doIfThenElse @state env type pos condition true false
+
+        CA.'try pos { patternsAndExpressions, value }:
+            try type as
+                'nothing: newRawType @state
+                'just t: t.raw
+            >> doTry env pos __ value patternsAndExpressions @state
+
+        CA.'introspect pos introspect usr:
+            doIntrospect @state env pos type introspect usr
 
 
 getTypeDef as fn Env, Pos, USR, @State: Maybe ([ Name & Pos ] & Self.Def) =
@@ -1635,8 +1689,14 @@ getValueDef as fn Env, Pos, USR, @State: Maybe CA.ValueDef =
                     'nothing
 
 
-doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.FullType =
-    fn env, pos, introspect, usr, @state:
+doIntrospect as fn @State, Env, Pos, Maybe TA.FullType, Token.Introspect, USR: TA.Expression & TA.FullType =
+    fn @state, env, pos, expectedType, introspect, usr:
+    #
+    if expectedType /= 'nothing then
+        todo "TODO: checkIntrospect"
+    else
+        ""
+
     selfUsr as USR =
         'USR (CoreDefs.makeUmr "Self") "Self"
 
@@ -1691,14 +1751,9 @@ doIntrospect as fn Env, Pos, Token.Introspect, USR, @State: TA.Expression & TA.F
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =
     fn env, pos, expectedRaw, value, caPatternsAndExpressions, @state:
+    #
     typedValue & valueType =
-        doExpression
-            @state
-            {
-            , canonicalExpression = value
-            , env
-            , expectedType = 'nothing
-            }
+        doExpression @state env 'nothing value
 
     uni & patternsAndExpressions =
         'uni & []
@@ -1716,13 +1771,7 @@ doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.
                 }
 
             typedExpression & expressionType =
-                doExpression
-                    @state
-                    {
-                    , canonicalExpression = exp
-                    , env = newEnv
-                    , expectedType = 'nothing
-                    }
+                doExpression @state newEnv 'nothing exp
 
             addEquality newEnv (CA.expressionPos exp) 'why_TryExpression expectedRaw expressionType.raw @state
 
