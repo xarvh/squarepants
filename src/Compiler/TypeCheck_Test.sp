@@ -258,7 +258,7 @@ functions as Test =
                 []
             """
             (infer "listCons")
-            (Test.errorContains [ "I need the annotation and the value to have the same type" ])
+            (Test.errorContains [ "variant literals must always be of" ])
         , codeTest
             """
             Annotations that are too general should be rejected

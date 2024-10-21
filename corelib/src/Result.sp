@@ -47,6 +47,7 @@ withDefault as fn a, Result e a: a =
         'err _: default
 
 
+# TODO rename to resolveErrorsWith?
 recoverFromError as fn fn err: a, fn None: Result err a: a =
     fn errorToPayload, getResult:
     try getResult 'none as

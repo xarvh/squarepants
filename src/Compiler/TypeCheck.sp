@@ -960,16 +960,17 @@ doConstructor =
                         _:
                             """
 
-                            The annotation says that this variant literal should be of type:
+                            The annotation says that this variant should be of type:
+
 
                             """
                             .. typeToHuman env raw
+                            .. """
 
-                            """
+                            However variant literals must always be of a var(iant) type!
 
-                            However variant literals must always be of a var(iant) type.
+                            The two types are not compatible.
 
-                            The two types are not compatible!
                             """
                             >> newAddError @state env pos __
 
