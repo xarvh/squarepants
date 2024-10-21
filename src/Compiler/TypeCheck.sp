@@ -1145,10 +1145,20 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
             #
             >> 'ok
     >> onOk fn expectedParameterTypes & expectedBodyType:
-    if todo "check arity vs expectedParameterTypes" then
-        'err "wrong arity!!!"
+
+    expectedArity =
+        List.length expectedParameterTypes
+
+    if  expectedArity /= arity then
+        """
+        The definition of this function says that it requires """ .. Text.fromNumber arity .. """ arguments.
+        However its annotation says that it requires """ .. Text.fromNumber expectedArity .. """.
+        Which one is the correct one?
+        """
+        >> 'err
     else
         'ok 'none
+
     >> onOk fn _:
     !typedParameters =
         Array.fromList []
