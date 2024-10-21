@@ -1145,20 +1145,27 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
             #
             >> 'ok
     >> onOk fn expectedParameterTypes & expectedBodyType:
-
     expectedArity =
         List.length expectedParameterTypes
 
-    if  expectedArity /= arity then
+    if expectedArity /= arity then
         """
-        The definition of this function says that it requires """ .. Text.fromNumber arity .. """ arguments.
-        However its annotation says that it requires """ .. Text.fromNumber expectedArity .. """.
-        Which one is the correct one?
+        The definition of this function says that it requires
+        """
+        .. Text.fromNumber arity
+        .. """
+        arguments.
+               However its annotation says that it requires
+        """
+        .. Text.fromNumber expectedArity
+        .. """
+        .
+                Which one is the correct one?
+
         """
         >> 'err
     else
         'ok 'none
-
     >> onOk fn _:
     !typedParameters =
         Array.fromList []
@@ -1442,11 +1449,97 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
             TA.'error pos & fullTypeError
 
 
+inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
+    fn env, pos, attrName, inferredType, @state:
+    try inferredType as
+
+        TA.'typeRecord _ 'nothing attrTypes:
+            try Dict.get attrName attrTypes as
+
+                'just type:
+                    type
+
+                'nothing:
+                    addError env pos ('errorRecordDoesNotHaveAttribute attrName) @state
+
+                    TA.'typeError
+
+        TA.'typeRecord p ('just tyvarId) extensionAttrTypes:
+            try Dict.get attrName extensionAttrTypes as
+
+                'just type:
+                    type
+
+                'nothing:
+                    newExtId =
+                        newTyvarId @state
+
+                    newAttrType =
+                        newRawType @state
+
+                    type =
+                        TA.'typeRecord p ('just newExtId) (Dict.insert attrName newAttrType extensionAttrTypes)
+
+                    addEquality env pos 'why_RecordAccess (TA.'typeVar p tyvarId) type @state
+
+                    newAttrType
+
+        TA.'typeVar p id:
+            newExtId =
+                newTyvarId @state
+
+            # Attrs have always the same default uni as the record
+            newAttrType =
+                TA.'typeVar p (newTyvarId @state)
+
+            type as TA.RawType =
+                TA.'typeRecord p ('just newExtId) (Dict.ofOne attrName newAttrType)
+
+            addEquality env pos 'why_RecordAccess inferredType type @state
+
+            newAttrType
+
+        _:
+            addError env pos ('errorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
+
+            TA.'typeError
+
+
+doRecordAccess as fn @State, Env, Maybe TA.FullType, Pos, Name, CA.Expression: TA.Expression & TA.FullType =
+    fn @state, env, maybeExpectedType, pos, attrName, recordExpression:
+    typedRecord & recordType =
+        doExpression @state env 'nothing recordExpression
+
+    fullType =
+        try maybeExpectedType as
+
+            'nothing:
+                { recordType with raw = inferRecordAccess env pos attrName .raw @state }
+
+            'just expectedType:
+                newId =
+                    newTyvarId @state
+
+                requiredType =
+                    expectedType.raw
+                    >> Dict.ofOne attrName __
+                    >> TA.'typeRecord pos ('just newId) __
+
+                addEquality env pos 'why_RecordAccess recordType.raw requiredType @state
+
+                checkUni env pos { given = recordType.uni, required = expectedType.uni } @state
+
+                expectedType
+
+    TA.'recordAccess pos attrName typedRecord & fullType
+
+
 doExpression as fn @State, Env, Maybe TA.FullType, CA.Expression: TA.Expression & TA.FullType =
     fn @state, env, type, exp:
     try exp as
 
         CA.'literalNumber pos n:
+            #
             doLiteralNumber @state env type pos n
 
         CA.'literalText pos text:
@@ -1465,8 +1558,10 @@ doExpression as fn @State, Env, Maybe TA.FullType, CA.Expression: TA.Expression 
             doCall @state env type pos reference args
 
         CA.'record pos maybeExt attrs:
-            #
             doRecord @state env type pos maybeExt attrs
+
+        CA.'recordAccess pos attrName recordExpression:
+            doRecordAccess @state env type pos attrName recordExpression
 
 
 getTypeDef as fn Env, Pos, USR, @State: Maybe ([ Name & Pos ] & Self.Def) =
@@ -1625,62 +1720,6 @@ doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.
             uf & l
 
     TA.'try pos { patternsAndExpressions, value = typedValue, valueType } & { raw = expectedRaw, uni }
-
-
-inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
-    fn env, pos, attrName, inferredType, @state:
-    try inferredType as
-
-        TA.'typeRecord _ 'nothing attrTypes:
-            try Dict.get attrName attrTypes as
-
-                'just type:
-                    type
-
-                'nothing:
-                    addError env pos ('errorRecordDoesNotHaveAttribute attrName) @state
-
-                    TA.'typeError
-
-        TA.'typeRecord p ('just tyvarId) extensionAttrTypes:
-            try Dict.get attrName extensionAttrTypes as
-
-                'just type:
-                    type
-
-                'nothing:
-                    newExtId =
-                        newTyvarId @state
-
-                    newAttrType =
-                        newRawType @state
-
-                    type =
-                        TA.'typeRecord p ('just newExtId) (Dict.insert attrName newAttrType extensionAttrTypes)
-
-                    addEquality env pos 'why_RecordAccess (TA.'typeVar p tyvarId) type @state
-
-                    newAttrType
-
-        TA.'typeVar p id:
-            newExtId =
-                newTyvarId @state
-
-            # Attrs have always the same default uni as the record
-            newAttrType =
-                TA.'typeVar p (newTyvarId @state)
-
-            type as TA.RawType =
-                TA.'typeRecord p ('just newExtId) (Dict.ofOne attrName newAttrType)
-
-            addEquality env pos 'why_RecordAccess inferredType type @state
-
-            newAttrType
-
-        _:
-            addError env pos ('errorTryingToAccessAttributeOfNonRecord attrName inferredType) @state
-
-            TA.'typeError
 
 
 inferArgument as fn Env, CA.Argument, @State: TA.Argument =
