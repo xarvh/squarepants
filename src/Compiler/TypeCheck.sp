@@ -1563,6 +1563,21 @@ doExpression as fn @State, Env, Maybe TA.FullType, CA.Expression: TA.Expression 
         CA.'recordAccess pos attrName recordExpression:
             doRecordAccess @state env type pos attrName recordExpression
 
+        CA.'letIn def rest:
+            typedDef & defEnv =
+                {
+                , directDeps = Dict.empty
+                , maybeBody = 'just def.body
+                , pattern = def.pattern
+                , uni = def.uni
+                }
+                >> doDefinition 'refLocal env __ @state
+
+            typedRest & restType =
+                doExpression @state defEnv type rest
+
+            TA.'letIn typedDef typedRest restType & restType
+
 
 getTypeDef as fn Env, Pos, USR, @State: Maybe ([ Name & Pos ] & Self.Def) =
     fn env, pos, usr, @state:
