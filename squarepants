@@ -11672,7 +11672,7 @@ const u0$Human$Format$unindentBlockComment = (($indent, $content) => {
           return (text_dropLeft)($minLead, $0);
         }), $tail));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 249:4', (sp_toHuman)($3))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 248:4', (sp_toHuman)($3))));
 });
 
 const u0$SPLib$Format$blankLine = (u0$SPLib$Format$lineToBlock)(u0$SPLib$Format$Blank);
@@ -11739,7 +11739,7 @@ const u0$Human$Format$formatBinopChain = (($env, $priority, $1) => {
         }));
         return ($last.line > $first.line);
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 670:8', (sp_toHuman)($opsAndRights))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 679:8', (sp_toHuman)($opsAndRights))));
   return (u0$SPLib$Format$spaceSeparatedOrStackForce)($forceMultiline, (c0$Core$Cons)((u0$Human$Format$formatExpressionAndMaybeAddParens)($env, (u0$Human$Format$chainPrecedence)($opsAndRights), $left), (c0$List$map)($formatOpAndRight, $opsAndRights)));
 });
 
@@ -11871,9 +11871,15 @@ const u0$Human$Format$commaSeparatedList = (($forceMultiline, $open, $close, $cl
 });
 
 const u0$Human$Format$formatFunctionHeader = (($env, $pars) => {
-  return (u0$Human$Format$commaSeparatedList)(false, (u0$SPLib$Format$textToBlock)("fn"), ":", false, (c0$List$map)((($0) => {
-    return (u0$Human$Format$formatExpression)($env, $0);
-  }), $pars));
+  const $formatParameter = (($faExpression) => {
+    const $block = (u0$Human$Format$formatExpression)($env, $faExpression);
+    return (((($faExpression)[0] === "$Expression") && ((($faExpression)[3])[0] === "$Fn"))
+      ? (u0$Human$Format$parens)($block)
+      : (true
+        ? $block
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 625:8', (sp_toHuman)($faExpression))));
+  });
+  return (u0$Human$Format$commaSeparatedList)(false, (u0$SPLib$Format$textToBlock)("fn"), ":", false, (c0$List$map)($formatParameter, $pars));
 });
 
 const u0$SPLib$Format$spacesInTab = 4;
@@ -11953,7 +11959,7 @@ const u0$Human$Format$formatCall = (($env, $ref, $args) => {
       }))()
       : (true
         ? c0$Maybe$Nothing
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 696:8', (sp_toHuman)($arg))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 705:8', (sp_toHuman)($arg))));
   });
   const $formatArgument = (($index, $arg) => {
     let $6 = ($asContinuingFn)($index, $arg);
@@ -11966,7 +11972,7 @@ const u0$Human$Format$formatCall = (($env, $ref, $args) => {
           const $body = ($6)[1].third;
           return (u0$Human$Format$formatFunctionHeader)($env, $params);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 709:8', (sp_toHuman)($6))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 718:8', (sp_toHuman)($6))));
   });
   const $maybeContinuing = ((c0$Maybe$onJust)((($0) => {
     return ($asContinuingFn)($lastIndex, $0);
@@ -11984,7 +11990,7 @@ const u0$Human$Format$formatCall = (($env, $ref, $args) => {
         const $body = ($maybeContinuing)[1].third;
         return (u0$SPLib$Format$stack)((c0$Core$Cons)($call, (c0$Core$Cons)(((c0$Basics$applyIf)((sp_equal)($layout, c0$Compiler$FormattableAst$Indented), u0$SPLib$Format$indent))((u0$Human$Format$formatExpression)($env, $body)), c0$Core$Nil)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 728:4', (sp_toHuman)($maybeContinuing)))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 737:4', (sp_toHuman)($maybeContinuing)))));
 });
 
 const u0$Human$Format$formatConstructor = (($env, $maybeModule, $name) => {
@@ -11995,7 +12001,7 @@ const u0$Human$Format$formatConstructor = (($env, $maybeModule, $name) => {
         const $module = ($maybeModule)[1];
         return (c0$Core$Cons)($module, (c0$Core$Cons)(".", c0$Core$Nil));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 601:10', (sp_toHuman)($maybeModule)))), (c0$Core$Cons)((c0$Core$Cons)($name, c0$Core$Nil), c0$Core$Nil)))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 600:10', (sp_toHuman)($maybeModule)))), (c0$Core$Cons)((c0$Core$Cons)($name, c0$Core$Nil), c0$Core$Nil)))));
 });
 
 const u0$Human$Format$formatFunction = (($env, $layout, $pars, $body) => {
@@ -12020,7 +12026,7 @@ const u0$Human$Format$extractIfElses = (($env, $x) => {
           first: (c0$List$reverse)($acc),
           second: (u0$Human$Format$formatExpression)($env, $expr),
         })
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 746:8', (sp_toHuman)($expr))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 755:8', (sp_toHuman)($expr))));
   });
   return ($rec)(c0$Core$Nil, $x);
 });
@@ -12069,11 +12075,11 @@ const u0$Human$Format$formatIf = (($env, $isMultiline, $expr) => {
           }))()
           : (true
             ? c0$Maybe$Nothing
-            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 768:20', (sp_toHuman)($5))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 777:20', (sp_toHuman)($5))));
       }))()
       : (true
         ? c0$Maybe$Nothing
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 762:12', (sp_toHuman)($conditionsAndValues)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 771:12', (sp_toHuman)($conditionsAndValues)))));
   return ((($maybeSingleLine)[0] === "$Just")
     ? ((() => {
       const $conditionLine = ($maybeSingleLine)[1].first;
@@ -12095,7 +12101,7 @@ const u0$Human$Format$formatIf = (($env, $isMultiline, $expr) => {
         });
         return (u0$SPLib$Format$stack)((c0$Core$Cons)((u0$SPLib$Format$stack)((c0$List$indexedMap)($formatCAndV, $conditionsAndValues)), (c0$Core$Cons)((u0$SPLib$Format$textToBlock)("else"), (c0$Core$Cons)((u0$SPLib$Format$indent)($default), c0$Core$Nil))));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 775:4', (sp_toHuman)($maybeSingleLine))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 784:4', (sp_toHuman)($maybeSingleLine))));
 });
 
 const u0$Human$Format$formatList = (($env, $isMultiline, $unpacksAndExprs) => {
@@ -12126,7 +12132,7 @@ const u0$Human$Format$formatLiteralText = ((() => {
           const $rows = (c0$List$map)(u0$SPLib$Format$textToBlock, (text_split)("\n", $text));
           return (u0$SPLib$Format$stack)((c0$List$concat)((c0$Core$Cons)((c0$Core$Cons)($tripleQuote, c0$Core$Nil), (c0$Core$Cons)($rows, (c0$Core$Cons)((c0$Core$Cons)($tripleQuote, c0$Core$Nil), c0$Core$Nil)))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 336:4', (sp_toHuman)($singleOrTriple))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 335:4', (sp_toHuman)($singleOrTriple))));
   });
 }))();
 
@@ -12138,7 +12144,7 @@ const u0$Human$Format$formatLowercase = (($env, $maybeType, $maybeModule, $name,
         const $module = ($maybeModule)[1];
         return (c0$Core$Cons)($module, (c0$Core$Cons)(".", c0$Core$Nil));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 562:10', (sp_toHuman)($maybeModule)))), (c0$Core$Cons)((c0$Core$Cons)($name, c0$Core$Nil), (c0$Core$Cons)((c0$List$map)((($p) => {
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 561:10', (sp_toHuman)($maybeModule)))), (c0$Core$Cons)((c0$Core$Cons)($name, c0$Core$Nil), (c0$Core$Cons)((c0$List$map)((($p) => {
     return ("." + $p);
   }), $attrPath), c0$Core$Nil))))));
   return ((($maybeType)[0] === "$Nothing")
@@ -12148,7 +12154,7 @@ const u0$Human$Format$formatLowercase = (($env, $maybeType, $maybeModule, $name,
         const $type = ($maybeType)[1];
         return (u0$SPLib$Format$spaceSeparatedOrIndent)((c0$Core$Cons)((u0$SPLib$Format$addSuffix)((u0$SPLib$Format$Text_)(" as"), $word), (c0$Core$Cons)((u0$Human$Format$formatExpression)($env, $type), c0$Core$Nil)));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 572:4', (sp_toHuman)($maybeType))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 571:4', (sp_toHuman)($maybeType))));
 });
 
 const u0$Human$Format$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $attrs) => {
@@ -12161,7 +12167,7 @@ const u0$Human$Format$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $attr
           const $ext = (($maybeMaybeExt)[1])[1];
           return (u0$SPLib$Format$addSuffix)((u0$SPLib$Format$Text_)(" with"), (u0$SPLib$Format$prefix)(1, (u0$SPLib$Format$Text_)("{ "), (u0$Human$Format$formatExpression)($env, $ext)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 498:8', (sp_toHuman)($maybeMaybeExt)))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 497:8', (sp_toHuman)($maybeMaybeExt)))));
   const $formatRecordAttribute = (($5) => {
     const $maybeExpr = $5.maybeExpr;
     const $name = $5.name;
@@ -12172,7 +12178,7 @@ const u0$Human$Format$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $attr
           const $expr = ($maybeExpr)[1];
           return (u0$SPLib$Format$rowOrIndent)((c0$Maybe$Just)(u0$SPLib$Format$Space), (c0$Core$Cons)((u0$SPLib$Format$addSuffix)((u0$SPLib$Format$Text_)(" ="), (u0$Human$Format$formatExpression)($env, $name)), (c0$Core$Cons)((u0$Human$Format$formatExpression)($env, $expr), c0$Core$Nil)));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 514:8', (sp_toHuman)($maybeExpr))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 513:8', (sp_toHuman)($maybeExpr))));
   });
   const $attributeName = (($nameExpr) => {
     const $6 = $nameExpr.name;
@@ -12183,7 +12189,7 @@ const u0$Human$Format$formatRecord = (($env, $isMultiline, $maybeMaybeExt, $attr
       }))()
       : (true
         ? ""
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 528:8', (sp_toHuman)($6))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 527:8', (sp_toHuman)($6))));
   });
   return (u0$Human$Format$commaSeparatedList)($isMultiline, $open, "}", true, (c0$List$map)($formatRecordAttribute, (list_sortBy)($attributeName, $attrs)));
 });
@@ -12266,7 +12272,7 @@ const u0$Human$Format$formatStatement = (($env, $stat) => {
               const $unionDef = ($stat)[1];
               return (u0$Human$Format$formatUnionDef)($env, $unionDef);
             }))()
-            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 407:4', (sp_toHuman)($stat)))))));
+            : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 406:4', (sp_toHuman)($stat)))))));
 });
 
 const u0$Human$Format$formatStatements = (($env, $sss) => {
@@ -12290,9 +12296,9 @@ const u0$Human$Format$formatStatements = (($env, $sss) => {
                 ? ($env.isRoot
                   ? (sp_cons)(u0$SPLib$Format$blankLine, (sp_cons)(u0$SPLib$Format$blankLine, $acc))
                   : (sp_cons)(u0$SPLib$Format$blankLine, $acc))
-                : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 386:16', (sp_toHuman)($maybePrevious)))))));
+                : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 385:16', (sp_toHuman)($maybePrevious)))))));
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 380:8', (sp_toHuman)($stats))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 379:8', (sp_toHuman)($stats))));
   });
   return (u0$SPLib$Format$stack)(($rec)(c0$Maybe$Nothing, $sss, c0$Core$Nil));
 });
@@ -12339,7 +12345,7 @@ const u0$Human$Format$formatTry = (($env, $value, $patterns) => {
           });
           return (c0$List$map)($formatIndented, $formatted);
         }))()
-        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 831:8', (sp_toHuman)($4))));
+        : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 840:8', (sp_toHuman)($4))));
   }))();
   return (u0$SPLib$Format$stack)((c0$Core$Cons)((u0$SPLib$Format$spaceSeparatedOrIndent)((c0$Core$Cons)((u0$SPLib$Format$textToBlock)("try"), (c0$Core$Cons)((u0$Human$Format$formatExpression)($env, $value), (c0$Core$Cons)((u0$SPLib$Format$textToBlock)("as"), c0$Core$Nil)))), (c0$Core$Cons)((u0$SPLib$Format$indent)((u0$SPLib$Format$stack)($blocks)), c0$Core$Nil)));
 });
@@ -12353,7 +12359,7 @@ const u0$Human$Format$unopToText = (($unopId) => {
         ? "!"
         : ((($unopId)[0] === "$UnopRecycle")
           ? "@"
-          : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 639:4', (sp_toHuman)($unopId))))));
+          : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 648:4', (sp_toHuman)($unopId))))));
 });
 
 const u0$Human$Format$formatUnopCall = (($env, $unopId, $expr) => {
@@ -12369,7 +12375,7 @@ const u0$Human$Format$formatUppercase = (($env, $maybeModule, $name) => {
         const $module = ($maybeModule)[1];
         return (c0$Core$Cons)($module, (c0$Core$Cons)(".", c0$Core$Nil));
       }))()
-      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 588:10', (sp_toHuman)($maybeModule)))), (c0$Core$Cons)((c0$Core$Cons)($name, c0$Core$Nil), c0$Core$Nil)))));
+      : (sp_throw)('Missing pattern in try..as', 'src/Human/Format.sp 587:10', (sp_toHuman)($maybeModule)))), (c0$Core$Cons)((c0$Core$Cons)($name, c0$Core$Nil), c0$Core$Nil)))));
 });
 
 const u0$Human$Format$formatExpression = (($env, $faExpression) => {
@@ -18466,7 +18472,7 @@ const u0$Human$Format_Test$comments = (i2$Test$Group)("Comments", (c0$Core$Cons)
 
 const u0$Human$Format_Test$definitions = (i2$Test$Group)("Definitions", (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Alias", "Meh a b = Int", "Meh a b =\n    Int\n"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Unions 1", "var Meh = 'meh z", "var Meh =\n    , 'meh z\n"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Unions 2", "var Meh a b = 'blah, 'meh x y z", "var Meh a b =\n    , 'blah\n    , 'meh x y z\n"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Annotated values", "(x as Type) & (y as Kind) = thing", "(x as Type) & (y as Kind) =\n    thing\n"), c0$Core$Nil)))));
 
-const u0$Human$Format_Test$functions = (i2$Test$Group)("Functions", (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("SKIP (low priority) Named functions should always have their body below", "f =\n    fn a: fn b: c", "f =\n    fn a:\n    fn b:\n    c"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Named functions should always have their body below", "x =\n  a\n  >> onOk fn b:\n\n  c\n  >> onOk fn d:\n\n  e", "x =\n    a\n    >> onOk fn b:\n    c\n    >> onOk fn d:\n    e\n"), c0$Core$Nil)));
+const u0$Human$Format_Test$functions = (i2$Test$Group)("Functions", (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("SKIP (low priority) Named functions should always have their body below", "f =\n    fn a: fn b: c", "f =\n    fn a:\n    fn b:\n    c"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Continuations should always have their body below", "x =\n  a\n  >> onOk fn b:\n\n  c\n  >> onOk fn d:\n\n  e", "x =\n    a\n    >> onOk fn b:\n    c\n    >> onOk fn d:\n    e\n"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Annotated argument functions should have parens", "any as fn fn a: Bool, [a]: Bool =\n    whatever", "any as fn (fn a: Bool), [ a ]: Bool =\n    whatever\n"), c0$Core$Nil))));
 
 const u0$Human$Format_Test$ifs = (i2$Test$Group)("if..then", (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Single line", "x = if blah   then a  else b", "x =\n    if blah then a else b\n"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Make multiline", "x = if blah then\n      a = 1\n      a + b\n  else  b", "x =\n    if blah then\n        a =\n            1\n\n        a + b\n    else\n        b\n"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("Preserve multiline", "x =\n    if blah then\n        a\n    else b", "x =\n    if blah then\n        a\n    else\n        b\n"), (c0$Core$Cons)((u0$Human$Format_Test$formatTest)("if else", "x = if blah then a else if o then b else q", "x =\n    if blah then\n        a\n    else if o then\n        b\n    else\n        q\n"), c0$Core$Nil)))));
 

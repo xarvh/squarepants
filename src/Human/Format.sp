@@ -233,7 +233,6 @@ formatExpression as fn Env, FA.Expression: Fmt.Block =
 
         FA.'native:
             Fmt.textToBlock "this_is_sp_native"
-
     >> stackWithComments env comments __
 
 
@@ -617,8 +616,18 @@ formatRecordShorthand as fn Env, Name, [ Name ]: Fmt.Block =
 
 formatFunctionHeader as fn Env, [ FA.Expression ]: Fmt.Block =
     fn env, pars:
+
+    formatParameter as fn FA.Expression: Fmt.Block =
+        fn faExpression:
+        block =
+            formatExpression env faExpression
+
+        try faExpression as
+            FA.'expression _ _ (FA.'fn _ _ _): parens block
+            _: block
+
     pars
-    >> List.map (formatExpression env __) __
+    >> List.map formatParameter __
     >> commaSeparatedList 'false (Fmt.textToBlock "fn") ":" 'false __
 
 
