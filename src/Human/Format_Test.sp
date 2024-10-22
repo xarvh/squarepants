@@ -354,7 +354,7 @@ functions as Test =
             """
         , formatTest
             """
-            Named functions should always have their body below
+            Continuations should always have their body below
             """
             """
             x =
@@ -373,6 +373,19 @@ functions as Test =
                 c
                 >> onOk fn d:
                 e
+
+            """
+        , formatTest
+            """
+            Annotated argument functions should have parens
+            """
+            """
+            any as fn fn a: Bool, [a]: Bool =
+                whatever
+            """
+            """
+            any as fn (fn a: Bool), [ a ]: Bool =
+                whatever
 
             """
         ]
