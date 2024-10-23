@@ -81,7 +81,7 @@ breakDownText as fn Text: [ FormattedText ] =
 
     text
     >> Text.split formatSeparator __
-    >> List.indexedMap formatSnippet __
+    >> List.mapWithIndex __ formatSnippet
 
 
 emph as fn Text: Text =
@@ -186,7 +186,7 @@ fmtBlock as fn Int, [ Highlight ], [ Text ]: Text =
         .. wordHighlight index
 
     ls
-    >> List.indexedMap fmtLine __
+    >> List.mapWithIndex __ fmtLine
     >> Text.join "\n" __
     >> (fn s: s .. "\n")
 
@@ -287,8 +287,8 @@ simpleToText as fn Module, Pos, [ Text ]: [ FormattedText ] =
 
     description =
         [ block, desc... ]
-        >> List.concatMap (Text.split "\n" __) __
-        >> List.map (fn s: "  " .. s) __
+        >> List.mapConcat __ (Text.split "\n" __)
+        >> List.map __ (fn s: "  " .. s)
         >> Text.join "\n" __
 
     [
@@ -307,8 +307,8 @@ rawToText as fn [ Text ]: [ FormattedText ] =
     fn desc:
     description =
         desc
-        >> List.concatMap (Text.split "\n" __) __
-        >> List.map (fn s: "  " .. s) __
+        >> List.mapConcat __ (Text.split "\n" __)
+        >> List.map __ (fn s: "  " .. s)
         >> Text.join "\n" __
 
     [

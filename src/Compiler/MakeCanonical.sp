@@ -219,7 +219,7 @@ translateLocalDefinition as fn Env, FA.ValueDef: Res (Env & CA.LocalDef) =
     fn env, fa:
     nonFn =
         fa.nonFn
-        >> List.map (fn pos & name: name & pos) __
+        >> List.map __ (fn pos & name: name & pos)
         >> Dict.fromList
 
     fa.pattern
@@ -242,7 +242,7 @@ translateRootDefinition as fn Env, FA.ValueDef: Res (Env & CA.ValueDef) =
     fn env, fa:
     nonFn =
         fa.nonFn
-        >> List.map (fn pos & name: name & pos) __
+        >> List.map __ (fn pos & name: name & pos)
         >> Dict.fromList
 
     fa.pattern
@@ -404,7 +404,7 @@ translateTuple as fn ReadOnly, fn FA.Expression: Res ca, FA.BinopChain: Res (Dic
         FA.binopChainExpressions chain
 
     faExpressions
-    >> List.mapRes translate __
+    >> List.mapRes __ translate
     >> onOk fn items:
     pos as Pos =
         List.for Pos.'g faExpressions (fn FA.'expression _ p _, z: Pos.range p z)
@@ -453,7 +453,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
 
                 FA.'constructor { maybeModule, name }:
                     faArgs
-                    >> List.mapRes (translateRawPattern env __) __
+                    >> List.mapRes __ (translateRawPattern env __)
                     >> onOk fn caPars:
                     translatePatternConstructor env pos maybeModule name caPars
 
@@ -474,16 +474,16 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                     CA.'patternConstructor pos CoreDefs.nilUsr [] >> 'ok
 
                 [ lastHasDots & FA.'expression _ p lastFaExpr, reversedFaRest... ]:
-                    if List.any Tuple.first reversedFaRest then
+                    if List.any reversedFaRest Tuple.first then
                         error env p [ "only the last item in a list can have ... triple dots" ]
                     else if not lastHasDots then
                         reversedFaItems
-                        >> List.mapRes (fn hasDots & expr: translateRawPattern env expr) __
+                        >> List.mapRes __ (fn hasDots & expr: translateRawPattern env expr)
                         >> onOk fn reversedCaItems:
                         List.for (CA.'patternConstructor p CoreDefs.nilUsr []) reversedCaItems pushItem >> 'ok
                     else
                         reversedFaRest
-                        >> List.mapRes (fn hasDots & expr: translateRawPattern env expr) __
+                        >> List.mapRes __ (fn hasDots & expr: translateRawPattern env expr)
                         >> onOk fn reversedCaRest:
                         try lastFaExpr as
 
@@ -507,7 +507,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
             else if precedence == Op.precedence_cons then
                 chain
                 >> FA.binopChainExpressions
-                >> List.mapRes (translateRawPattern env __) __
+                >> List.mapRes __ (translateRawPattern env __)
                 >> onOk fn caPas:
                 try List.reverse caPas as
 
@@ -646,7 +646,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
         FA.'fn _ faParams faBody:
             faParams
-            >> List.mapRes (translateParameter env __) __
+            >> List.mapRes __ (translateParameter env __)
             >> onOk fn caParams:
             env
             >> List.forRes __ caParams fn par, envX:
@@ -698,7 +698,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                 >> translateExpression env __
                 >> onOk fn caRef:
                 faArgs
-                >> List.mapRes (translateArgument env __) __
+                >> List.mapRes __ (translateArgument env __)
                 >> onOk fn caArgs:
                 try maybeInlinePlaceholders caRef caArgs as
                     'just call: 'ok call
@@ -756,7 +756,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                     CA.'constructor pos CoreDefs.nilUsr >> 'ok
 
                 hasDots & head :: rest:
-                    if List.any Tuple.first rest then
+                    if List.any rest Tuple.first then
                         error env pos [ "can use dots only on the last element (for now?)" ]
                     else
                         init & revItems =
@@ -793,7 +793,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                 translateExpression env value
                 >> onOk fn caValue:
                 patterns
-                >> List.mapRes translatePatternAndStatements __
+                >> List.mapRes __ translatePatternAndStatements
                 >> onOk fn patternsAndExpressions:
                 CA.'try pos { patternsAndExpressions, value = caValue } >> 'ok
 
@@ -815,7 +815,7 @@ makePartiallyAppliedFunction as fn Env, Pos, Int, FA.Expr_: Res CA.Expression =
         FA.'expression [] pos __
 
     List.range 0 (placeholdersCount - 1)
-    >> List.map (fn x: x >> FA.'resolvedArgumentPlaceholder >> ex) __
+    >> List.map __ (fn x: x >> FA.'resolvedArgumentPlaceholder >> ex)
     >> FA.'fn FA.'inline __ (ex body)
     >> ex
     >> translateExpression env __
@@ -1254,7 +1254,7 @@ translateMutop as fn Env, Pos, FA.BinopChain: Res CA.Expression =
                 CA.'variable op.pos ('refGlobal op.usr)
 
             [ left, right ]
-            >> List.mapRes (translateArgument env __) __
+            >> List.mapRes __ (translateArgument env __)
             >> onOk fn caArgs:
             CA.'call pos caRef caArgs >> 'ok
 
@@ -1419,7 +1419,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 
                 FA.'uppercase { maybeModule, name }:
                     faArgs
-                    >> List.mapRes (translateRawType ro __) __
+                    >> List.mapRes __ (translateRawType ro __)
                     >> onOk fn caArgs:
                     ro.resolveToUsr pos maybeModule name
                     >> onOk fn usr:
@@ -1458,7 +1458,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
 
         FA.'fn _ faParams faReturn:
             faParams
-            >> List.mapRes (translateTypeFunctionParameter ro __) __
+            >> List.mapRes __ (translateTypeFunctionParameter ro __)
             >> onOk fn caParams:
             faReturn
             >> translateFullType ro __
@@ -1508,7 +1508,7 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
         'ok 'none
     >> onOk fn 'none:
     faPars
-    >> List.mapRes (translateRawType env.ro __) __
+    >> List.mapRes __ (translateRawType env.ro __)
     >> onOk fn ins:
     tyvars as Dict Name Pos =
         List.for Dict.empty ins (fn in, dict: Dict.join (CA.typeTyvars in) dict)
@@ -1525,7 +1525,7 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
 
         undeclaredTyvars
         >> Dict.toList
-        >> List.map toError __
+        >> List.map __ toError
         >> Error.'nested
         >> 'err
     >> onOk fn 'none:
@@ -1585,7 +1585,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 aliasDef as CA.AliasDef =
                     {
                     , directDeps = typeDeps type Dict.empty
-                    , pars = List.map (fn p & n: n & p) fa.args
+                    , pars = List.map fa.args (fn p & n: n & p)
                     , type
                     , usr = 'USR env.ro.umr name
                     }
@@ -1601,14 +1601,14 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
             else
                 # TODO check that args are not duplicate
                 caPars as [ Name & Pos ] =
-                    List.map (fn p & n: n & p) fa.args
+                    List.map fa.args (fn p & n: n & p)
 
                 usr =
                     'USR env.ro.umr name
 
                 type =
                     caPars
-                    >> List.map (fn n & p: CA.'typeAnnotationVariable p n) __
+                    >> List.map __ (fn n & p: CA.'typeAnnotationVariable p n)
                     >> CA.'typeNamed pos usr __
 
                 Dict.empty & env

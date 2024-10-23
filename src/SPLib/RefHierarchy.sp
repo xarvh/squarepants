@@ -16,9 +16,9 @@ State key =
 #
 resolve as fn (fn key: Dict key whatever), key, [ key ], State key: State key with key NonFunction =
     fn getEdges, target, path, state0:
-    if List.member target state0.resolved then
+    if List.contains target state0.resolved then
         state0
-    else if List.member target path then
+    else if List.contains target path then
         circ as [ key ] =
             target :: List.takeWhile (fn key: key /= target) path
 

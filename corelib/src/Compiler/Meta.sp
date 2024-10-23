@@ -289,7 +289,7 @@ resolveLocation as fn ResolvePars error, Location, Maybe Name, Name: Result erro
                                     'just << "imports.sp translates `" .. referencedModuleAlias .. "` as `" .. modulePath .. "`"
                                 , 'just << "However, library $directoryPathOfLibrary does not expose any " .. modulePath .. " module."
                                 ]
-                                >> List.filterMap identity __
+                                >> List.filterMap __ identity
                                 >> pars.makeError
                                 >> 'err
 

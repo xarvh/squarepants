@@ -73,7 +73,7 @@ translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.E
 
         TA.'patternConstructor _ path pas:
             accum
-            >> List.indexedFor __ pas fn index, pa, a:
+            >> List.forWithIndex __ pas fn index, pa, a:
                 translatePatternRec pa (EA.'constructorAccess index accessExpr) a
 
         TA.'patternRecord _ attrs:
@@ -97,7 +97,7 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
 
         TA.'patternConstructor _ usr pas:
             EA.'isConstructor usr valueToTest :: accum
-            >> List.indexedFor __ pas fn index, argPattern, a:
+            >> List.forWithIndex __ pas fn index, argPattern, a:
                 testPattern argPattern (EA.'constructorAccess index valueToTest) a
 
         TA.'patternRecord _ attrs:
@@ -198,11 +198,11 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             attrs
             >> Dict.toList
             >> List.sortBy Tuple.first __
-            >> List.map (Tuple.mapSecond (translateExpression env __) __) __
+            >> List.map __ (Tuple.mapSecond (translateExpression env __) __)
             >> EA.'literalRecord (Maybe.map (translateExpression env __) extends) __
 
         TA.'call _ ref argsAndTypes:
-            EA.'call (translateExpression env ref) (List.map (translateArgAndType env __) argsAndTypes)
+            EA.'call (translateExpression env ref) (List.map argsAndTypes (translateArgAndType env __))
 
         TA.'if _ ar:
             EA.'conditional (translateExpression env ar.condition) (translateExpression env ar.true) (translateExpression env ar.false)

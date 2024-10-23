@@ -240,7 +240,7 @@ build as fn BuildPlan: Res BuildOut =
     fn pars:
     !state as CollectDependenciesState =
         pars.requiredUsrs
-        >> List.map (fn usr: usr & usrToDependencyType usr) __
+        >> List.map __ (fn usr: usr & usrToDependencyType usr)
         >> initCollectDependenciesState
 
     collectRequiredUsrs pars @state
@@ -266,7 +266,7 @@ build as fn BuildPlan: Res BuildOut =
 
 #    log "CIRC" ""
 #    List.each circulars fn circ:
-#        List.map (usrToText env_ __) circ
+#        List.map circ (usrToText env_ __)
 #        >> Text.join ", " __
 #        >> log "C" __
 
@@ -337,7 +337,7 @@ build as fn BuildPlan: Res BuildOut =
     valueDefsWithDestruction as [ USR & TA.ValueDef ] =
         envF.reversedRootValueDefs
         >> List.reverse
-        >> List.map (Compiler/UniquenessCheck.updateValueDef @errors modulesByUmr __) __
+        >> List.map __ (Compiler/UniquenessCheck.updateValueDef @errors modulesByUmr __)
 
     stopOnError pars @errors
     >> onOk fn 'none:
@@ -351,7 +351,7 @@ build as fn BuildPlan: Res BuildOut =
     if missingDefs /= [] then
         [
         , "Cannot find definitions for:"
-        , List.map (Human/Type.usrToText CoreDefs.coreModule __) missingDefs...
+        , List.map missingDefs (Human/Type.usrToText CoreDefs.coreModule __)...
         ]
         >> Error.'raw
         >> 'err
@@ -378,12 +378,12 @@ build as fn BuildPlan: Res BuildOut =
             def.body
 
     rootValues as [ EA.GlobalDefinition ] =
-        List.filterMap translateDef valueDefsWithDestruction
+        List.filterMap valueDefsWithDestruction translateDef
 
     natives as [ USR ] =
         valueDefsWithDestruction
-        >> List.filter (fn usr & def: def.body == 'nothing) __
-        >> List.map Tuple.first __
+        >> List.filter __ (fn usr & def: def.body == 'nothing)
+        >> List.map __ Tuple.first
 
     #
     # Constructors

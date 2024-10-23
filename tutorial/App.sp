@@ -389,7 +389,7 @@ viewCompiledHtml as fn Model, Html Text: [ Html Msg ] =
                 ]
                 [ Html.text "(none yet)" ]
         else
-            Html.code [ Html.class "ml" ] (List.map (fn i: Html.div [] [ Html.text i ]) model.embeddedInputs)
+            Html.code [ Html.class "ml" ] (List.map model.embeddedInputs (fn i: Html.div [] [ Html.text i ]))
         ]
     ]
 

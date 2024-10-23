@@ -130,7 +130,7 @@ infer as fn Text: fn Text: Result Text Out =
     keysToUsrs =
         __
         >> Dict.keys
-        >> List.map ('USR TH.moduleUmr __) __
+        >> List.map __ ('USR TH.moduleUmr __)
 
     requiredUsrs as [ USR ] =
         [
@@ -163,7 +163,7 @@ infer as fn Text: fn Text: Result Text Out =
     targetUsr =
         EA.translateUsr ('USR TH.moduleUmr targetName)
 
-    try List.find (fn rv: rv.usr == targetUsr) rootValues as
+    try List.find rootValues (fn rv: rv.usr == targetUsr) as
         'nothing: 'err "find fail"
         'just def: 'ok def
     >> onOk fn def:

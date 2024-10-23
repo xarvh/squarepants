@@ -159,7 +159,7 @@ toImports as fn ToImportsPars, ImportsFile: Res Imports =
         >> List.for __ importsFile.sourceDirs (insertSourceDir pars @errors __ __)
 
     errs =
-        Array.toList @errors >> List.map (fn msg: Error.'raw [ msg ]) __
+        Array.toList @errors >> List.map __ (fn msg: Error.'raw [ msg ])
 
     if errs == [] then
         'ok meta

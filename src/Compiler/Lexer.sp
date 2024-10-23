@@ -278,13 +278,13 @@ unindent as fn Text: Text =
 
         minLead =
             lines
-            >> List.filter (fn s: Text.trimLeft s /= "") __
-            >> List.map countLeadingSpaces __
+            >> List.filter __ (fn s: Text.trimLeft s /= "")
+            >> List.map __ countLeadingSpaces
             >> List.minimum
             >> Maybe.withDefault 0 __
 
         lines
-        >> List.map (Text.dropLeft minLead __) __
+        >> List.map __ (Text.dropLeft minLead __)
         >> Text.join "\n" __
         >> (Text.replaceRegex "\n[ ]*$") "" __
 
@@ -357,7 +357,7 @@ parseAttr as fn @ReadState, Text: Text =
 
 parseAttrs as fn @ReadState, [ Text ]: [ Text ] =
     fn @state, ts:
-    List.map (parseAttr @state __) ts
+    List.map ts (parseAttr @state __)
 
 
 addWord as fn Int, Int, Text, @ReadState: None =
@@ -383,7 +383,7 @@ addWord as fn Int, Int, Text, @ReadState: None =
             parseNameToWord @state { attrPath = [], main, maybeModule = 'nothing }
 
         [ "", two, rest... ]:
-            addErrorIf (List.any (__ == "") (two :: rest)) @state "use spaces around `..` to concatenate Text"
+            addErrorIf (List.any (two :: rest) (__ == "")) @state "use spaces around `..` to concatenate Text"
 
             # .attr1
             # .attr1.attr2
@@ -394,7 +394,7 @@ addWord as fn Int, Int, Text, @ReadState: None =
                 }
 
         [ one, two, rest... ]:
-            addErrorIf (List.any (__ == "") snips) @state "use spaces around `..` to concatenate Text"
+            addErrorIf (List.any snips (__ == "")) @state "use spaces around `..` to concatenate Text"
 
             if startsWithUpperChar one then
                 # Module.value
@@ -999,6 +999,6 @@ lexer as fn Bool, Error.Module: Res [ [ Token ] ] =
 
         errors:
             errors
-            >> List.map (fn e: e module) __
+            >> List.map __ (fn e: e module)
             >> Error.'nested
             >> 'err

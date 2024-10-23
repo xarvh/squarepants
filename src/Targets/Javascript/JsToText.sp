@@ -31,7 +31,7 @@ emitBlock as fn Int, List JA.Statement: Text =
     fn l, block:
     lines =
         block
-        >> List.map (emitStatement (l + 1) __) __
+        >> List.map __ (emitStatement (l + 1) __)
         >> Text.join "\n" __
 
     "{\n" .. lines .. "\n" .. id l .. "}"
@@ -49,7 +49,7 @@ emitExpr as fn Int, JA.Expr: Text =
             n
 
         JA.'call ref args:
-            "(" .. emitExpr l ref .. ")(" .. Text.join ", " (List.map (emitExpr l __) args) .. ")"
+            "(" .. emitExpr l ref .. ")(" .. Text.join ", " (List.map args (emitExpr l __)) .. ")"
 
         JA.'unop op left:
             op .. "(" .. emitExpr l left .. ")"
@@ -73,7 +73,7 @@ emitExpr as fn Int, JA.Expr: Text =
                 attrs
                 >> Dict.toList
                 >> List.sortBy Tuple.first __
-                >> List.map (fn key & value: id (l + 1) .. key .. ": " .. emitExpr (l + 1) value .. ",") __
+                >> List.map __ (fn key & value: id (l + 1) .. key .. ": " .. emitExpr (l + 1) value .. ",")
                 >> (fn a: "({\n" .. Text.join "\n" a .. "\n" .. id l .. "})")
 
         JA.'accessWithDot name e:
@@ -94,8 +94,8 @@ emitExpr as fn Int, JA.Expr: Text =
                 "[]"
             else
                 items
-                >> List.map (fn i: id (l + 1) .. emitExpr (l + 1) i .. ",") __
+                >> List.map __ (fn i: id (l + 1) .. emitExpr (l + 1) i .. ",")
                 >> (fn a: "([\n" .. Text.join "\n" a .. "\n" .. id l .. "])") __
 
         JA.'comma expr:
-            "(" .. Text.join ", " (List.map (emitExpr l __) expr) .. ")"
+            "(" .. Text.join ", " (List.map expr (emitExpr l __)) .. ")"

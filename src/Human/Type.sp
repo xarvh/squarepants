@@ -73,10 +73,10 @@ doRawType as fn CA.Module, TA.RawType: FA.Expression =
     try rawType as
 
         TA.'typeExact _ usr args:
-            FA.'call (doUsr contextModule usr) (List.map (doRawType contextModule __) args)
+            FA.'call (doUsr contextModule usr) (List.map args (doRawType contextModule __))
 
         TA.'typeFn _ parTypes full:
-            FA.'fn FA.'inline (List.map (doParType contextModule __) parTypes) (doFullType contextModule full)
+            FA.'fn FA.'inline (List.map parTypes (doParType contextModule __)) (doFullType contextModule full)
 
         TA.'typeVar _ tyvarId:
             doTyvarId contextModule tyvarId
@@ -91,7 +91,7 @@ doRawType as fn CA.Module, TA.RawType: FA.Expression =
                 taAttrs
                 >> Dict.toList
                 >> List.sortBy Tuple.first __
-                >> List.map (fn name & raw: { maybeExpr = 'just (doRawType contextModule raw), name = doLowercase contextModule name }) __
+                >> List.map __ (fn name & raw: { maybeExpr = 'just (doRawType contextModule raw), name = doLowercase contextModule name })
 
             # TODO display tuples as tuples!
 

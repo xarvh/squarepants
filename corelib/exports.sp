@@ -55,27 +55,27 @@ module =
       all
       find
       findMap
-      member
+      contains
       sort
       sortBy
       indexBy
       for
       for2
-      indexedFor
-      indexedFor2
+      forWithIndex
+      for2WithIndex
       forReversed
-      forReversed2
+      for2Reversed
       length
       map
       map2
       mapRes
       forRes
       range
-      indexedMap
-      indexedMap2
+      mapWithIndex
+      map2WithIndex
       append
       concat
-      concatMap
+      mapConcat
       partition
       head
       last
@@ -88,7 +88,7 @@ module =
       filterMap
       mapFirst
       each
-      indexedEach2
+      each2WithIndex
       reverse
       repeat
       drop

@@ -181,7 +181,7 @@ loadOverride as Override =
     call =
         fn env, eaArgs:
         jaArgs =
-            List.map (translateArg { nativeBinop = 'false } env __) eaArgs
+            List.map eaArgs (translateArg { nativeBinop = 'false } env __)
 
         requestedTypeHumanized as JA.Expr =
             try eaArgs as
@@ -348,7 +348,7 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
     fn env, jaRef, args:
     call =
         args
-        >> List.map (translateArg { nativeBinop = 'false } env __) __
+        >> List.map __ (translateArg { nativeBinop = 'false } env __)
         >> JA.'call jaRef __
 
     asRecycled as fn EA.Argument: Maybe JA.Expr =
@@ -366,7 +366,7 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
                 >> 'just
 
     recycledArgs =
-        List.filterMap asRecycled args
+        List.filterMap args asRecycled
 
     if recycledArgs == [] then
         #
@@ -374,15 +374,6 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         #
         call
     else
-        zzz =
-            fn index, arg:
-            bracketIndex =
-                index + 1
-                >> Text.fromNumber
-                >> JA.'literal
-
-            JA.'binop "=" arg (JA.'accessWithBrackets bracketIndex recycleTempVariable)
-
         #
         # (t = ref(arg1, re1, arg3, re2, ....), re1 = t[1], re2 = t[2], t[0]);
         #
@@ -390,8 +381,13 @@ makeCall as fn Env, JA.Expr, [ EA.Argument ]: JA.Expr =
         # t = ref(arg1, re0, arg3, re1, ....)
         , [ JA.'binop "=" recycleTempVariable call ]
         # re1 = t[1], re2 = t[2]
-        , recycledArgs
-        >> List.indexedMap zzz __
+        , List.mapWithIndex recycledArgs fn index, arg:
+            bracketIndex =
+                index + 1
+                >> Text.fromNumber
+                >> JA.'literal
+
+            JA.'binop "=" arg (JA.'accessWithBrackets bracketIndex recycleTempVariable)
         # t[2]
         , [ JA.'accessWithBrackets (JA.'literal "0") recycleTempVariable ]
         ]
@@ -439,18 +435,15 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
 
         EA.'fn eaArgs body:
             argsWithNames as [ Bool & Text ] =
-                zzz =
-                    fn index, re & maybeName:
+                List.mapWithIndex eaArgs fn index, re & maybeName:
                     try maybeName as
                         'just name: re & translateName name
                         'nothing: re & "_" .. Text.fromNumber index
 
-                List.indexedMap zzz eaArgs
-
             recycledPars as [ JA.Expr ] =
                 argsWithNames
-                >> List.filter Tuple.first __
-                >> List.map (fn _ & name: JA.'var name) __
+                >> List.filter __ Tuple.first
+                >> List.map __ (fn _ & name: JA.'var name)
 
             statementsRaw as [ JA.Statement ] =
                 try translateExpression env 'true body as
@@ -471,9 +464,9 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
                             JA.'return e: JA.'return (JA.'array (e :: recycledPars))
                             _: stat
 
-                    List.map addRecycled statementsRaw
+                    List.map statementsRaw addRecycled
 
-            'inline << JA.'blockLambda (List.map Tuple.second argsWithNames) statementsFinal
+            'inline << JA.'blockLambda (List.map argsWithNames Tuple.second) statementsFinal
 
         EA.'letIn { inExpression, letExpression, maybeName, type }:
             inStatements =
@@ -509,7 +502,7 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
 
         EA.'and eaTests:
             jaTests =
-                List.map (translateExpressionToExpression env 'true __) eaTests
+                List.map eaTests (translateExpressionToExpression env 'true __)
 
             try List.reverse jaTests as
 
@@ -608,9 +601,9 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
 
             TA.'typeFn _ pars out:
                 argNames as [ Text ] =
-                    pars >> List.indexedMap (fn index, name: constructorArgumentName (index + 1)) __
+                    List.mapWithIndex pars (fn index, name: constructorArgumentName (index + 1))
 
-                arrayHead :: List.map JA.'var argNames
+                arrayHead :: List.map argNames JA.'var
                 >> JA.'array
                 >> JA.'simpleLambda argNames __
 
@@ -641,7 +634,7 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         pars
 
     jaConstructors as [ JA.Statement ] =
-        List.map (translateConstructorDef __) constructors
+        List.map constructors (translateConstructorDef __)
 
     env as Env =
         {
@@ -651,6 +644,6 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         }
 
     jaStatements as [ JA.Statement ] =
-        List.filterMap (translateDef env __) eaDefs
+        List.filterMap eaDefs (translateDef env __)
 
     List.concat [ jaConstructors, jaStatements ]

@@ -100,13 +100,13 @@ errorContains as fn [ Text ]: CodeExpectation ok =
 
             'err e:
                 missing =
-                    snippets >> List.filter (fn sn: not (Text.contains sn e)) __
+                    List.filter snippets (fn sn: not (Text.contains sn e))
 
                 if missing == [] then
                     'nothing
                 else
                     indentedError =
-                        e >> Text.split "\n" __ >> List.map (fn l: "    " .. l) __ >> Text.join "\n" __
+                        e >> Text.split "\n" __ >> List.map __ (fn l: "    " .. l) >> Text.join "\n" __
 
                     'just << "Error message:\n\n" .. indentedError .. "\n\nis missing snippets: " .. Text.join ", " missing
 
@@ -151,10 +151,10 @@ getName as fn Test: Text =
 flattenAndRun as fn [ Test ]: [ { code as Text, name as Text, outcome as TestOutcome } ] =
     fn tests:
     flattened as [ T ] =
-        outcomesRec "" ('group "" tests) [] >> List.map (fn r: if Text.contains "SKIP" r.name then { r with getOutcome = fn 'none: 'skipped } else r) __
+        outcomesRec "" ('group "" tests) [] >> List.map __ (fn r: if Text.contains "SKIP" r.name then { r with getOutcome = fn 'none: 'skipped } else r)
 
     onlies as [ T ] =
-        flattened >> List.filter (fn r: Text.contains "ONLY" r.name) __
+        List.filter flattened (fn r: Text.contains "ONLY" r.name)
 
     runnable as [ T ] =
         if onlies /= [] then onlies else flattened
@@ -166,7 +166,7 @@ flattenAndRun as fn [ Test ]: [ { code as Text, name as Text, outcome as TestOut
 
         { code, name, outcome = getOutcome 'none }
 
-    List.map runTest runnable
+    List.map runnable runTest
 
 
 errorsFirst as fn TestOutcome: Number =

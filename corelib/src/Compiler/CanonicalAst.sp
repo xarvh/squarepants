@@ -184,7 +184,7 @@ typeTyvars as fn RawType: Dict Name Pos =
 
     try raw as
         'typeNamed _ _ args: fromList args
-        'typeFn _ pars to: fromList (to.raw :: List.map parTypeToRaw pars)
+        'typeFn _ pars to: fromList (to.raw :: List.map pars parTypeToRaw)
         'typeRecord _ attrs: fromList (Dict.values attrs)
         'typeAnnotationVariable pos name: Dict.ofOne name pos
         'typeError _: Dict.empty

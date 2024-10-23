@@ -213,18 +213,16 @@ errorMutatingAnImmutable as fn Env, Text, Pos, @Array Error: None =
 
 errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @Array Error: None =
     fn env, functionPos, spentFromParent, @errors:
-    zzz =
-        fn name & spentPos:
-            { block, location } =
-                Error.posToHuman (getErrorModule env) spentPos
-
-            block .. "\n"
 
     blocks =
         spentFromParent
         >> Dict.toList
         >> List.sortBy Tuple.second __
-        >> List.map zzz __
+        >> List.map __ fn name & spentPos:
+            { block, location } =
+                Error.posToHuman (getErrorModule env) spentPos
+
+            block .. "\n"
 
     [
     , [ "This function is spending the unique variable `" .. (Dict.keys spentFromParent >> Text.join "`, `" __) .. "`" ]
@@ -363,7 +361,7 @@ doCall as fn Env, @Array Error, Pos, TA.Expression, [ TA.Argument ]: UniOut TA.E
                 'nothing
 
     if doneArgs.required /= Dict.empty or doneReference.required /= Dict.empty then
-        List.each (List.filterMap asRecyclingFunction arguments) fn name:
+        List.each (List.filterMap arguments asRecyclingFunction) fn name:
             errorTaintedCallRecyclesFunctions env pos name (Dict.join doneArgs.required doneReference.required) @errors
     else
         'none
@@ -570,8 +568,8 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                 consumeInEnv doneValue.spent env
 
             # Pass 1: collect all spent
-            zzz =
-                fn pattern & block:
+            donePatternsAndBlocks =
+                List.map patternsAndExpressions fn pattern & block:
                     addedVars & mutables_should_be_empty & env0 =
                         addPatternToEnv @errors pattern newEnv
 
@@ -579,9 +577,6 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                         requireInEnv addedVars doneValue.required env0
 
                     doExpression localEnv @errors block >> uniOutMap (fn expr: pattern & expr) __
-
-            donePatternsAndBlocks =
-                patternsAndExpressions >> List.map zzz __
 
             allRecycled =
                 Dict.empty >> List.for __ donePatternsAndBlocks (fn d, a: Dict.join d.recycled a)
@@ -594,8 +589,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
 
             # Pass 2:
             newPatternsAndBlocks as [ TA.Pattern & TA.Expression ] =
-                xxx =
-                    fn { recycled, required, resolved = pattern & blockExpression, spent }:
+                List.map donePatternsAndBlocks fn { recycled, required, resolved = pattern & blockExpression, spent }:
                     finalBlock =
                         blockExpression
                         >> Dict.for __ allSpent fn name, _, exp:
@@ -605,8 +599,6 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                                 TA.'destroyIn name exp
 
                     pattern & finalBlock
-
-                List.map xxx donePatternsAndBlocks
 
             {
             , recycled = allRecycled

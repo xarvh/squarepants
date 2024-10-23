@@ -552,7 +552,7 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 ok expression
             else
                 [ FA.'evaluation expression ]
-                #:: List.map FA.CommentStatement commentsReversed
+                #:: List.map commentsReversed FA.CommentStatement
                 #>> List.reverse
                 >> FA.'statements
                 >> FA.'expression (List.reverse commentsReversed) (pos env start end) __
@@ -716,7 +716,7 @@ chain_append as fn FA.Binop & FA.Expression, FA.BinopChain: FA.BinopChain =
 blah as fn Int, FA.BinopChain, FA.BinopChain, FA.Binop: FA.Expression =
     fn lowestPrecedence, remainingChain, accChain, accOp:
     abovePrecedence & rest =
-        List.partitionWhile (fn op & exp: op.precedence > lowestPrecedence) remainingChain.second
+        List.partitionWhile remainingChain.second (fn op & exp: op.precedence > lowestPrecedence)
 
     ee =
         reorderAccordingToBinopPrecedence (remainingChain.first & abovePrecedence)
@@ -728,7 +728,7 @@ blah as fn Int, FA.BinopChain, FA.BinopChain, FA.Binop: FA.Expression =
 
         []:
             p =
-                updatedChain.first :: List.map (fn x: x.second) updatedChain.second >> posRange
+                updatedChain.first :: List.map updatedChain.second (fn x: x.second) >> posRange
 
             updatedChain
             >> FA.'binopChain lowestPrecedence __
@@ -749,7 +749,7 @@ reorderAccordingToBinopPrecedence as fn FA.BinopChain: FA.Expression =
 
         lowestPrecedence:
             abovePrecedence & rest =
-                List.partitionWhile (fn op & exp: op.precedence > lowestPrecedence) chain.second
+                List.partitionWhile chain.second (fn op & exp: op.precedence > lowestPrecedence)
 
             # This is going to be the "left" part of our final chain
             left =

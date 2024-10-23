@@ -245,7 +245,7 @@ mapFirstLine as fn fn Indented Line: Indented Line, fn Indented Line: Indented L
     try b as
         'empty: 'empty
         'singleLine breaks l1: 'singleLine breaks (firstFn l1)
-        'stack l1 ls: 'stack (firstFn l1) (List.map restFn ls)
+        'stack l1 ls: 'stack (firstFn l1) (List.map ls restFn)
 
 
 mapLastLine as fn fn Indented Line: Indented Line, Block: Block =
@@ -322,7 +322,7 @@ rowOrIndentForce as fn Bool, Maybe Line, [ Block ]: Block =
 
                 'just (reversedLines & mkLine):
                     if forceMultiline then
-                        stack (b1 :: List.map indent rest)
+                        stack (b1 :: List.map rest indent)
                     else
                         # TODO this seems to be repeated above.
                         try joiner as
@@ -331,7 +331,7 @@ rowOrIndentForce as fn Bool, Maybe Line, [ Block ]: Block =
                         >> mkLine
 
                 _:
-                    stack (b1 :: List.map indent rest)
+                    stack (b1 :: List.map rest indent)
 
 
 # TODO this outputs the lines in reverse order, it shouldn't!
@@ -476,5 +476,5 @@ render as fn Block: Text =
 
         'stack l1 rest:
             [ l1, rest... ]
-            >> List.map renderIndentedLine __
+            >> List.map __ renderIndentedLine
             >> Text.join "" __

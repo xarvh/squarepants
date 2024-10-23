@@ -195,12 +195,12 @@ listSourceDir as fn @IO, Text, Text: IO.Re [ Text ] =
     >> onOk fn dirContents:
     directChildren =
         dirContents
-        >> List.filterMap asModule __
-        >> List.map (fn fileName: modulePathWithTrailingSlash .. fileName) __
+        >> List.filterMap __ asModule
+        >> List.map __ (fn fileName: modulePathWithTrailingSlash .. fileName)
 
     dirContents
-    >> List.filterMap asModuleDirectory __
-    >> List.mapRes (fn subDir: listSourceDir @io sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/")) __
+    >> List.filterMap __ asModuleDirectory
+    >> List.mapRes __ (fn subDir: listSourceDir @io sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/"))
     >> onOk fn descendants:
     x =
         [ directChildren, List.concat descendants ] >> List.concat
@@ -219,7 +219,7 @@ updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     fn fileNames, orig:
     insertModuleName as fn Text, ImportsFile.SourceDir: ImportsFile.SourceDir =
         fn name, sd:
-        try List.find (fn m: m.path == name) sd.modules as
+        try List.find sd.modules (fn m: m.path == name) as
             'just _: sd
             'nothing: { sd with modules = { globals = [], path = name, visibleAs = name } :: .modules }
 
@@ -237,11 +237,11 @@ scanSourceDirs as fn @IO, fn Text, Text: Int, Meta.RootPaths, Meta.ImportsPath, 
     # sourceDirs does not contain all modules available in the dir, but only the exceptions;
     # before building Imports we need to add those that are not mentioned.
     importsFile.sourceDirs
-    >> List.mapRes (fn sd: listSourceDir @io (Path.join [ rootPath, importsDir, sd.path ]) "") __
+    >> List.mapRes __ (fn sd: listSourceDir @io (Path.join [ rootPath, importsDir, sd.path ]) "")
     >> ioToRes
     >> onOk fn allSourceDirLists:
     updatedSourceDirs as [ ImportsFile.SourceDir ] =
-        List.map2 updateSourceDir allSourceDirLists importsFile.sourceDirs
+        List.map2 allSourceDirLists importsFile.sourceDirs updateSourceDir
 
     ImportsFile.toImports
         {
@@ -353,7 +353,7 @@ searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
             'nothing
 
         'ok dirContents:
-            if List.any isWantedFile dirContents then
+            if List.any dirContents isWantedFile then
                 searchDir >> 'just
             else
                 parent =
@@ -513,7 +513,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
         EA.translateUsr entryUsr
 
     type =
-        try List.find (fn rv: rv.usr == _entryUsr) rootValues as
+        try List.find rootValues (fn rv: rv.usr == _entryUsr) as
             'just rv: rv.type
             'nothing: todo "no type!?"
 

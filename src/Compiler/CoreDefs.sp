@@ -280,7 +280,7 @@ tyVar as fn Name: CA.RawType =
 
 tyFn as fn [ CA.RawType ], CA.FullType: CA.RawType =
     fn pars, to:
-    CA.'typeFn Pos.'n (List.map (fn p: CA.'parSp (toImm p)) pars) to
+    CA.'typeFn Pos.'n (List.map pars (fn p: CA.'parSp (toImm p))) to
 
 
 typeBinopImm as fn CA.RawType, CA.RawType, CA.RawType: CA.RawType =
