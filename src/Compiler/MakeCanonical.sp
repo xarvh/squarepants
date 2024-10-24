@@ -106,7 +106,7 @@ patternDeps as fn CA.Deps, CA.Pattern: CA.Deps =
             Dict.for deps ps (fn k, v, a: patternDeps a v)
 
         CA.'patternAny _ _ ('just annotation):
-            typeDeps annotation.raw deps
+            typeDeps deps annotation.raw
 
         CA.'patternAny _ _ 'nothing:
             deps
@@ -118,8 +118,8 @@ patternDeps as fn CA.Deps, CA.Pattern: CA.Deps =
             deps
 
 
-expressionDeps as fn CA.Expression, CA.Deps: CA.Deps =
-    fn expression, deps:
+expressionDeps as fn CA.Deps, CA.Expression: CA.Deps =
+    fn deps, expression:
     try expression as
 
         CA.'literalNumber _ _:
@@ -140,49 +140,47 @@ expressionDeps as fn CA.Expression, CA.Deps: CA.Deps =
         CA.'fn _ pars body:
             deps
             >> List.for __ pars parameterDeps
-            >> expressionDeps body __
+            >> expressionDeps __ body
 
         CA.'record _ 'nothing exprByName:
-            Dict.for deps exprByName (fn name, v, a: expressionDeps v a)
+            Dict.for deps exprByName (fn name, v, a: expressionDeps a v)
 
         CA.'record _ ('just expr) exprByName:
             deps
-            >> expressionDeps expr __
-            >> Dict.for __ exprByName (fn name, v, a: expressionDeps v a)
+            >> expressionDeps __ expr
+            >> Dict.for __ exprByName (fn name, v, a: expressionDeps a v)
 
         CA.'record _ _ exprByName:
-            Dict.for deps exprByName (fn name, v, a: expressionDeps v a)
+            Dict.for deps exprByName (fn name, v, a: expressionDeps a v)
 
         CA.'recordAccess _ _ e:
-            expressionDeps e deps
+            expressionDeps deps e
 
         CA.'call _ e0 args:
             deps
-            >> expressionDeps e0 __
+            >> expressionDeps __ e0
             >> List.for __ args argumentDeps
 
         CA.'if _ args:
             deps
-            >> expressionDeps args.condition __
-            >> expressionDeps args.true __
-            >> expressionDeps args.false __
+            >> expressionDeps __ args.condition
+            >> expressionDeps __ args.true
+            >> expressionDeps __ args.false
 
         CA.'try _ { patternsAndExpressions, value }:
             addDeps =
-                fn u & p & b, d:
-                d >> patternDeps p __ >> expressionDeps b __
-
-            #d >> expressionDeps b __
+                fn d, u & p & b:
+                d >> patternDeps __ p >> expressionDeps __ b
 
             deps
-            >> expressionDeps value __
+            >> expressionDeps __ value
             >> List.for __ patternsAndExpressions addDeps
 
         CA.'letIn valueDef e:
             deps
-            >> patternDeps valueDef.pattern __
-            >> expressionDeps valueDef.body __
-            >> expressionDeps e __
+            >> patternDeps __ valueDef.pattern
+            >> expressionDeps __ valueDef.body
+            >> expressionDeps __ e
 
         CA.'introspect _ introspect usr:
             dependencyType as DependencyType =
@@ -197,17 +195,17 @@ expressionDeps as fn CA.Expression, CA.Deps: CA.Deps =
             Dict.insert usr dependencyType deps
 
 
-argumentDeps as fn CA.Argument, CA.Deps: CA.Deps =
-    fn arg, deps:
+argumentDeps as fn CA.Deps, CA.Argument: CA.Deps =
+    fn deps, arg:
     try arg as
-        CA.'argumentExpression e: expressionDeps e deps
+        CA.'argumentExpression e: expressionDeps deps e
         CA.'argumentRecycle _ _ _: deps
 
 
-parameterDeps as fn CA.Parameter, CA.Deps: CA.Deps =
-    fn par, deps:
+parameterDeps as fn CA.Deps, CA.Parameter: CA.Deps =
+    fn deps, par:
     try par as
-        CA.'parameterPattern _ pa: patternDeps pa deps
+        CA.'parameterPattern _ pa: patternDeps deps pa
         _: deps
 
 
@@ -271,10 +269,10 @@ translateRootDefinition as fn Env, FA.ValueDef: Res (Env & CA.ValueDef) =
             translateExpression localEnv fa.body
             >> onOk fn body:
             #
-            'just body & expressionDeps body Dict.empty >> 'ok
+            'just body & expressionDeps Dict.empty body >> 'ok
     >> onOk fn maybeBody & bodyDeps:
     directDeps =
-        patternDeps pattern bodyDeps
+        patternDeps bodyDeps pattern
 
     localEnv & { directDeps, maybeAnnotation, maybeBody, name, namePos } >> 'ok
 
@@ -682,7 +680,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
         FA.'call faRef faArgs:
             placeholdersCount & reversedArgs =
-                List.for faArgs (0 & []) fn cnt & rev, exp:
+                List.for (0 & []) faArgs fn cnt & rev, exp:
                     if isPlaceholder exp then
                         FA.'expression c p _ =
                             exp

@@ -1,4 +1,4 @@
-valueTest as fn Text, fn None: a, Test.CodeExpectation a: Test =
+valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
     Test.valueTest Debug.toHuman __ __ __
 
 
@@ -8,6 +8,7 @@ tests as Test =
         [
         , sortBy
         , concat
+        , intersperse
         ]
 
 
@@ -87,4 +88,29 @@ concat as Test =
             """
             (fn _: List.concat [ [ 1, 2 ], [ 3, 4 ] ])
             (Test.isOkAndEqualTo [ 1, 2, 3, 4 ])
+        ]
+
+
+intersperse as Test =
+    Test.'group
+        "intersperse"
+        [
+        , valueTest
+            """
+            trivial case 1
+            """
+            (fn _: List.intersperse 0 [])
+            (Test.isOkAndEqualTo [])
+        , valueTest
+            """
+            trivial case 2
+            """
+            (fn _: List.intersperse 0 [ 111 ])
+            (Test.isOkAndEqualTo [ 111 ])
+        , valueTest
+            """
+            basic case
+            """
+            (fn _: List.intersperse 0 [ 111, 222, 333 ])
+            (Test.isOkAndEqualTo [ 111, 0, 222, 0, 333 ])
         ]

@@ -213,7 +213,7 @@ map2WithIndex as fn [ a ], [ b ], (fn Int, a, b: c): [ c ] =
 
 
 append as fn [ a ], [ a ]: [ a ] =
-    fn xs, ys:
+    fn ys, xs:
     try ys as
         []: xs
         _: forReversed ys xs (fn a, b: Core.'cons b a)

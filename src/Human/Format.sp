@@ -793,7 +793,7 @@ formatIf as fn Env, Bool, FA.Expression: Fmt.Block =
             , falseLine
             ]
             >> List.intersperse Fmt.'space __
-            >> Fmt.for1 __ (fn item, acc: Fmt.'row acc item)
+            >> Fmt.for1 __ Fmt.'row
             >> Fmt.lineToBlock
 
         'nothing:
