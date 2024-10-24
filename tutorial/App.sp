@@ -264,8 +264,8 @@ tokenToClass as fn Token.Kind: Text =
             "keyword"
 
 
-viewColorToken as fn Text, Token, Int & [ Html msg ]: Int & [ Html msg ] =
-    fn code, Token.'token tStart tEnd kind, start & accum:
+viewColorToken as fn Int & [ Html msg ], Text, Token: Int & [ Html msg ] =
+    fn start & accum, code, Token.'token tStart tEnd kind:
     slice =
         Text.slice start tEnd code
 
@@ -308,7 +308,7 @@ viewEditor as fn Model: Html Msg =
             'ok tokens:
                 tokens
                 >> List.concat
-                >> List.for (0 & []) __ (viewColorToken code __ __)
+                >> List.for (0 & []) __ (viewColorToken __ code __)
                 >> Tuple.second
                 >> List.reverse
 

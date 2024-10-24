@@ -67,8 +67,8 @@ error as fn Env, Pos, [ Text ]: Res a =
 # Dependencies
 #
 
-typeDeps as fn CA.RawType, Dict USR DependencyType: Dict USR DependencyType =
-    fn type, acc:
+typeDeps as fn Dict USR DependencyType, CA.RawType: Dict USR DependencyType =
+    fn acc, type:
     try type as
 
         CA.'typeNamed _ usr args:
@@ -78,22 +78,22 @@ typeDeps as fn CA.RawType, Dict USR DependencyType: Dict USR DependencyType =
             acc
 
         CA.'typeRecord _ attrs:
-            Dict.for acc attrs (fn k, v, a: typeDeps v a)
+            Dict.for acc attrs (fn k, v, a: typeDeps a v)
 
         CA.'typeError _:
             acc
 
         CA.'typeFn _ params to:
             acc
-            >> typeDeps to.raw __
-            >> List.for __ params fn par, z:
+            >> typeDeps __ to.raw
+            >> List.for __ params fn z, par:
                 try par as
-                    CA.'parRe raw: typeDeps raw z
-                    CA.'parSp full: typeDeps full.raw z
+                    CA.'parRe raw: typeDeps z raw
+                    CA.'parSp full: typeDeps z full.raw
 
 
-patternDeps as fn CA.Pattern, CA.Deps: CA.Deps =
-    fn pattern, deps:
+patternDeps as fn CA.Deps, CA.Pattern: CA.Deps =
+    fn deps, pattern:
     try pattern as
 
         # TODO count a constructor dependency only when /instancing/ the constructor, not when matching it!
@@ -103,7 +103,7 @@ patternDeps as fn CA.Pattern, CA.Deps: CA.Deps =
             >> List.for __ ps patternDeps
 
         CA.'patternRecord _ completeness ps:
-            Dict.for deps ps (fn k, v, a: patternDeps v a)
+            Dict.for deps ps (fn k, v, a: patternDeps a v)
 
         CA.'patternAny _ _ ('just annotation):
             typeDeps annotation.raw deps
@@ -337,8 +337,8 @@ translateMaybeAnnotation as fn Env, Maybe FA.Expression: Res (Maybe CA.Annotatio
             >> 'ok
 
 
-insertPatternRecordAttribute as fn Env, FA.RecordAttribute, Dict Name CA.Pattern: Res (Dict Name CA.Pattern) =
-    fn env, attr, caAttrs:
+insertPatternRecordAttribute as fn Dict Name CA.Pattern, Env, FA.RecordAttribute: Res (Dict Name CA.Pattern) =
+    fn caAttrs, env, attr:
     # { x }
     # { x = pattern }
     # { x as Type }
@@ -394,11 +394,11 @@ translatePatternRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [ { maybeExp
             'ok CA.'complete
     >> onOk fn completeness:
     Dict.empty
-    >> List.forRes __ attrs (insertPatternRecordAttribute env __ __)
+    >> List.forRes __ attrs (insertPatternRecordAttribute __ env __)
     >> Result.map (fn x: CA.'patternRecord pos completeness x) __
 
 
-translateTuple as fn ReadOnly, fn FA.Expression: Res ca, FA.BinopChain: Res (Dict Name ca) =
+translateTuple as fn ReadOnly, (fn FA.Expression: Res ca), FA.BinopChain: Res (Dict Name ca) =
     fn ro, translate, chain:
     faExpressions as [ FA.Expression ] =
         FA.binopChainExpressions chain
@@ -407,7 +407,7 @@ translateTuple as fn ReadOnly, fn FA.Expression: Res ca, FA.BinopChain: Res (Dic
     >> List.mapRes __ translate
     >> onOk fn items:
     pos as Pos =
-        List.for Pos.'g faExpressions (fn FA.'expression _ p _, z: Pos.range p z)
+        List.for Pos.'g faExpressions (fn z, FA.'expression _ p _: Pos.range p z)
 
     try items as
 
@@ -465,7 +465,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
                 List.reverse faItems
 
             pushItem as fn CA.Pattern, CA.Pattern: CA.Pattern =
-                fn pattern, last:
+                fn last, pattern:
                 CA.'patternConstructor (CA.patternPos pattern) CoreDefs.consUsr [ pattern, last ]
 
             try reversedFaItems as
@@ -513,7 +513,7 @@ translateRawPattern as fn Env, FA.Expression: Res CA.Pattern =
 
                     last :: rest:
                         last
-                        >> List.for __ rest (fn item, list: CA.'patternConstructor pos CoreDefs.consUsr [ item, list ])
+                        >> List.for __ rest (fn list, item: CA.'patternConstructor pos CoreDefs.consUsr [ item, list ])
                         >> 'ok
 
                     []:
@@ -649,7 +649,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
             >> List.mapRes __ (translateParameter env __)
             >> onOk fn caParams:
             env
-            >> List.forRes __ caParams fn par, envX:
+            >> List.forRes __ caParams fn envX, par:
                 try par as
                     CA.'parameterPattern uni pa: insertPatternNames 'false pa envX
                     CA.'parameterRecycle p name: CA.'patternAny p ('just name) 'nothing >> insertPatternNames 'false __ envX
@@ -682,7 +682,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
 
         FA.'call faRef faArgs:
             placeholdersCount & reversedArgs =
-                List.for (0 & []) faArgs fn exp, cnt & rev:
+                List.for faArgs (0 & []) fn cnt & rev, exp:
                     if isPlaceholder exp then
                         FA.'expression c p _ =
                             exp
@@ -768,7 +768,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                         translateExpression env init
                         >> onOk fn caInit:
                         caInit
-                        >> List.forRes __ revItems fn _ & faItem, acc:
+                        >> List.forRes __ revItems fn acc, _ & faItem:
                             translateExpression env faItem
                             >> onOk fn caItem:
                             CA.'call pos (CA.'constructor pos CoreDefs.consUsr) [ CA.'argumentExpression caItem, CA.'argumentExpression acc ] >> 'ok
@@ -832,8 +832,8 @@ maybeInlinePlaceholders as fn CA.Expression, [ CA.Argument ]: Maybe CA.Expressio
     try ref as
 
         CA.'fn _ params (CA.'call pos nestedRef innerArgs):
-            replaceArg as fn CA.Argument, [ CA.Argument ] & [ CA.Argument ]: [ CA.Argument ] & [ CA.Argument ] =
-                fn innerArg, remainingOuterArgs & argsAccum:
+            replaceArg as fn [ CA.Argument ] & [ CA.Argument ], CA.Argument: [ CA.Argument ] & [ CA.Argument ] =
+                fn remainingOuterArgs & argsAccum, innerArg:
                 try innerArg & remainingOuterArgs as
 
                     CA.'argumentExpression (CA.'variable _ ('refPlaceholder _)) & [ next, restOuterArgs... ]:
@@ -857,7 +857,7 @@ maybeInlinePlaceholders as fn CA.Expression, [ CA.Argument ]: Maybe CA.Expressio
 
 insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
     fn isRoot, pattern, env:
-    List.forRes env.values (CA.patternNames pattern) fn paName, vs:
+    List.forRes env.values (CA.patternNames pattern) fn vs, paName:
         try Dict.get paName.name vs as
 
             'just duplicateName:
@@ -928,7 +928,7 @@ translateLowercase as fn Env, Pos, { attrPath as [ Name ], maybeModule as Maybe 
             env.ro.resolveToUsr pos maybeModule name >> Result.map 'refGlobal __
         >> onOk fn ref:
         CA.'variable pos ref
-        >> List.for __ attrPath (CA.'recordAccess pos __ __)
+        >> List.for __ attrPath (fn a, b: CA.'recordAccess pos b a)
         >> 'ok
 
 
@@ -948,7 +948,7 @@ translateRecordShorthand as fn Env, Pos, [ Name ], Name: Res CA.Expression =
 
             'just shorthandTarget:
                 shorthandTarget
-                >> List.for __ (name :: attrPath) (fn attrName, expr: CA.'recordAccess pos attrName expr)
+                >> List.for __ (name :: attrPath) (fn expr, attrName: CA.'recordAccess pos attrName expr)
                 >> 'ok
 
 
@@ -980,7 +980,7 @@ translateParameter as fn Env, FA.Expression: Res CA.Parameter =
             CA.'parameterPattern uni ca >> 'ok
 
 
-translateNumber as fn ReadOnly, Bool, fn Pos, Number: a, Pos, Text: Res a =
+translateNumber as fn ReadOnly, Bool, (fn Pos, Number: a), Pos, Text: Res a =
     fn ro, isPercent, constructor, pos, numberAsText:
     try Text.toNumber (Text.replace "_" "" numberAsText) as
 
@@ -1011,7 +1011,7 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [ FA.RecordAttribut
 
         'nothing:
             Dict.empty
-            >> List.forRes __ attrs (translateAndInsertRecordAttribute { env with maybeShorthandTarget = 'nothing } __ __)
+            >> List.forRes __ attrs (translateAndInsertRecordAttribute __ { env with maybeShorthandTarget = 'nothing } __)
             >> onOk fn caAttrs:
             CA.'record pos 'nothing caAttrs >> 'ok
 
@@ -1029,7 +1029,7 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [ FA.RecordAttribut
                 }
 
             Dict.empty
-            >> List.forRes __ attrs (translateAndInsertRecordAttribute newEnv __ __)
+            >> List.forRes __ attrs (translateAndInsertRecordAttribute __ newEnv __)
             >> onOk fn caAttrs:
             def as CA.LocalDef =
                 {
@@ -1046,8 +1046,8 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [ FA.RecordAttribut
             >> 'ok
 
 
-translateAndInsertRecordAttribute as fn Env, FA.RecordAttribute, Dict Text CA.Expression: Res (Dict Text CA.Expression) =
-    fn env, attr, caAttrsAccum:
+translateAndInsertRecordAttribute as fn Dict Text CA.Expression, Env, FA.RecordAttribute: Res (Dict Text CA.Expression) =
+    fn caAttrsAccum, env, attr:
     translateAttributeName env.ro attr.name
     >> onOk fn pos & caName & maybeFaType:
     if Dict.member caName caAttrsAccum then
@@ -1115,7 +1115,7 @@ translateBinopChain as fn Env, Pos, Int, FA.BinopChain: Res CA.Expression =
             0 & opChain.first
 
     (placeholdersCount as Int) & (reversedChainTail as [ FA.Binop & FA.Expression ]) =
-        List.for (cnt0 & []) opChain.second fn op & exp, cnt & rev:
+        List.for (cnt0 & []) opChain.second fn cnt & rev, op & exp:
             if isPlaceholder exp then
                 FA.'expression c p _ =
                     exp
@@ -1153,7 +1153,7 @@ resolvePipe as fn Env, Pos, FA.BinopChain: Res FA.Expression =
         head & chainTail =
             opChain
 
-        List.for head chainTail fn sep & faExp, acc:
+        List.for head chainTail fn acc, sep & faExp:
             FA.'expression _ p _ =
                 faExp
 
@@ -1166,7 +1166,7 @@ resolvePipe as fn Env, Pos, FA.BinopChain: Res FA.Expression =
         last & body =
             FA.binopChainReverse opChain
 
-        List.for last body fn sep & faExp, acc:
+        List.for last body fn acc, sep & faExp:
             FA.'expression _ p _ =
                 faExp
 
@@ -1324,8 +1324,8 @@ translateBinopChainRec as fn Env, Pos, CA.Expression, [ FA.Binop & FA.Expression
 # Type
 #
 
-translateAndInsertRecordAttributeType as fn ReadOnly, FA.RecordAttribute, Dict Name CA.RawType: Res (Dict Name CA.RawType) =
-    fn ro, faAttr, caAttrs:
+translateAndInsertRecordAttributeType as fn Dict Name CA.RawType, ReadOnly, FA.RecordAttribute: Res (Dict Name CA.RawType) =
+    fn caAttrs, ro, faAttr:
     translateAttributeName ro faAttr.name
     >> onOk fn pos & name & maybeFaType:
     if Dict.member name caAttrs then
@@ -1450,7 +1450,7 @@ translateRawType as fn ReadOnly, FA.Expression: Res CA.RawType =
                 erroro ro pos [ "Experimentally, extensible type annotations are disabled" ]
             else
                 Dict.empty
-                >> List.forRes __ attrs (translateAndInsertRecordAttributeType ro __ __)
+                >> List.forRes __ attrs (translateAndInsertRecordAttributeType __ ro __)
                 >> onOk fn caAttrs:
                 caAttrs
                 >> CA.'typeRecord pos __
@@ -1511,7 +1511,7 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
     >> List.mapRes __ (translateRawType env.ro __)
     >> onOk fn ins:
     tyvars as Dict Name Pos =
-        List.for Dict.empty ins (fn in, dict: Dict.join (CA.typeTyvars in) dict)
+        List.for Dict.empty ins (fn dict, in: Dict.join (CA.typeTyvars in) dict)
 
     undeclaredTyvars =
         Dict.diff tyvars varPars
@@ -1556,8 +1556,8 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
 # Module
 #
 
-insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
-    fn faStatement, caModule & env:
+insertRootStatement as fn CA.Module & Env, FA.Statement: Res (CA.Module & Env) =
+    fn caModule & env, faStatement:
     try faStatement as
 
         FA.'evaluation (FA.'expression _ pos _):
@@ -1584,7 +1584,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                 >> onOk fn type:
                 aliasDef as CA.AliasDef =
                     {
-                    , directDeps = typeDeps type Dict.empty
+                    , directDeps = typeDeps Dict.empty type
                     , pars = List.map fa.args (fn p & n: n & p)
                     , type
                     , usr = 'USR env.ro.umr name
@@ -1612,7 +1612,7 @@ insertRootStatement as fn FA.Statement, CA.Module & Env: Res (CA.Module & Env) =
                     >> CA.'typeNamed pos usr __
 
                 Dict.empty & env
-                >> List.forRes __ fa.constructors (translateConstructor type usr (Dict.fromList caPars) __ __)
+                >> List.forRes __ fa.constructors (fn a, b: translateConstructor type usr (Dict.fromList caPars) b a)
                 >> onOk fn constructors & newEnv:
                 varDef as CA.VariantTypeDef =
                     {

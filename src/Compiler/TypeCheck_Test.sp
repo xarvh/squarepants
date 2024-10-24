@@ -58,14 +58,14 @@ tyvar as fn Int: TA.RawType =
 
 freeTyvars as fn [ TA.TyvarId ]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
-    List.for Dict.empty ids fn id, d:
+    List.for Dict.empty ids fn d, id:
         Dict.insert id { maybeAnnotated = 'nothing } d
 
 
 freeTyvarsAnnotated as fn [ TA.TyvarId & Name ]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
-    Dict.empty
-    >> List.for __ ids fn id & name, d:
+
+    List.for Dict.empty ids fn d, id & name:
         Dict.insert id { maybeAnnotated = 'just { allowFunctions = 'true, name } } d
 
 

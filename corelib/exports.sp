@@ -64,7 +64,6 @@ module =
       forWithIndex
       for2WithIndex
       forReversed
-      for2Reversed
       length
       map
       map2

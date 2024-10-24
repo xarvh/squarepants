@@ -57,7 +57,7 @@ contains as fn a, [ a ]: Bool =
             if a == h then
                 'true
             else
-                contains t a
+                contains a t
 
 
 # TODO flip arguments, rename to `sort`
@@ -66,36 +66,36 @@ sortBy as fn (fn a: b), [ a ]: [ a ] with b NonFunction =
 
 
 indexBy as fn [ a ], (fn a: key): Dict key a with key NonFunction =
-    fn getIndex, list:
-    for Dict.empty list (fn i, a: Dict.insert (getIndex i) i a)
+    fn list, getIndex:
+    for Dict.empty list (fn a, i: Dict.insert (getIndex i) i a)
 
 
-for as fn state, [ item ], (fn item, state: state): state =
+for as fn state, [ item ], (fn state, item: state): state =
     fn init, aList, function:
     try aList as
         []: init
-        h :: tail: for (function h init) tail function
+        [ h, tail... ]: for (function init h) tail function
 
 
-for2 as fn state, [ a ], [ b ], (fn a, b, state: state): state =
+for2 as fn state, [ a ], [ b ], (fn state, a, b: state): state =
     fn init, aList, bList, function:
     try aList & bList as
         [] & _: init
         _ & []: init
-        [ headA, tailA... ] & [ headB, tailB... ]: for2 (function headA headB init) tailA tailB function
+        [ headA, tailA... ] & [ headB, tailB... ]: for2 (function init headA headB) tailA tailB function
 
 
-forWithIndex as fn state, [ item ], (fn Int, item, state: state): state =
+forWithIndex as fn state, [ item ], (fn state, Int, item: state): state =
     fn init, aList, function:
-    for (0 & init) aList (fn item, index & accum: index + 1 & function index item accum) >> Tuple.second
+    for (0 & init) aList (fn index & accum, item: index + 1 & function accum index item) >> Tuple.second
 
 
-for2WithIndex as fn state, [ a ], [ b ], (fn Int, a, b, state: state): state =
+for2WithIndex as fn state, [ a ], [ b ], (fn state, Int, a, b: state): state =
     fn init, aList, bList, function:
-    for2 (0 & init) aList bList (fn a, b, index & accum: index + 1 & function index a b accum) >> Tuple.second
+    for2 (0 & init) aList bList (fn index & accum, a, b: index + 1 & function accum index a b) >> Tuple.second
 
 
-forReversed as fn state, [ item ], (fn item, state: state): state =
+forReversed as fn state, [ item ], (fn state, item: state): state =
     fn init, list, f:
     foldrHelper as fn state, Int, [ item ]: state =
         fn acc, ctr, ls:
@@ -108,19 +108,19 @@ forReversed as fn state, [ item ], (fn item, state: state): state =
                 try r1 as
 
                     []:
-                        f a acc
+                        f acc a
 
                     b :: r2:
                         try r2 as
 
                             []:
-                                f a (f b acc)
+                                f (f acc b) a
 
                             c :: r3:
                                 try r3 as
 
                                     []:
-                                        f a (f b (f c acc))
+                                        f (f (f acc c) b) a
 
                                     d :: r4:
                                         res =
@@ -129,25 +129,19 @@ forReversed as fn state, [ item ], (fn item, state: state): state =
                                             else
                                                 foldrHelper acc (ctr + 1) r4
 
-                                        f a (f b (f c (f d res)))
+                                        f (f (f (f res d) c) b) a
 
     foldrHelper init 0 list
 
 
-for2Reversed as fn state, [ a ], [ b ], (fn a, b, state: state): state =
-    fn init, listA, listB, f:
-    # TODO optimize
-    for2 init (reverse listA) (reverse listB) f
-
-
 length as fn [ a ]: Int =
     fn list:
-    for 0 list (fn _, a: a + 1)
+    for 0 list (fn a, _: a + 1)
 
 
 map as fn [ a ], (fn a: b): [ b ] =
     fn list, f:
-    forReversed [] list (fn x, acc: f x :: acc)
+    forReversed [] list (fn acc, x: f x :: acc)
 
 
 map2 as fn [ a ], [ b ], (fn a, b: c): [ c ] =
@@ -161,15 +155,15 @@ map2 as fn [ a ], [ b ], (fn a, b: c): [ c ] =
     rec [] aa bb
 
 
-mapRes as fn[ a ],  (fn a: Result e b): Result e [ b ] =
+mapRes as fn [ a ], (fn a: Result e b): Result e [ b ] =
     fn list, f:
     fun =
-        fn a, acc: Result.map (fn b: [ b, acc... ]) (f a)
+        fn acc, a: Result.map (fn b: [ b, acc... ]) (f a)
 
     forRes [] list fun >> Result.map reverse __
 
 
-forRes as fn accum, [ item ], (fn item, accum: Result error accum): Result error accum =
+forRes as fn accum, [ item ], (fn accum, item: Result error accum): Result error accum =
     fn accum, ls, f:
     try ls as
 
@@ -177,7 +171,7 @@ forRes as fn accum, [ item ], (fn item, accum: Result error accum): Result error
             'ok accum
 
         h :: t:
-            try f h accum as
+            try f accum h as
                 'err x: 'err x
                 'ok newAccum: forRes newAccum t f
 
@@ -222,7 +216,7 @@ append as fn [ a ], [ a ]: [ a ] =
     fn xs, ys:
     try ys as
         []: xs
-        _: forReversed ys xs Core.'cons
+        _: forReversed ys xs (fn a, b: Core.'cons b a)
 
 
 concat as fn [ [ a ] ]: [ a ] =
@@ -238,7 +232,7 @@ mapConcat as fn [ a ], (fn a: [ b ]): [ b ] =
 partition as fn [ item ], (fn item: Bool): [ item ] & [ item ] =
     fn ls, f:
     [] & []
-    >> forReversed __ ls fn item, true & false:
+    >> forReversed __ ls fn true & false, item:
         if f item then
             (item :: true) & false
         else
@@ -333,13 +327,13 @@ takeWhile as fn (fn item: Bool), [ item ]: [ item ] =
 
 filter as fn [ item ], (fn item: Bool): [ item ] =
     fn ls, f:
-    forReversed [] ls (fn item, acc: if f item then item :: acc else acc)
+    forReversed [] ls (fn acc, item: if f item then item :: acc else acc)
 
 
 filterMap as fn [ a ], (fn a: Maybe b): [ b ] =
     fn la, f:
-    update as fn a, [ b ]: [ b ] =
-        fn a, acc:
+    update as fn[ b ], a: [ b ] =
+        fn acc, a:
         try f a as
             'just b: b :: acc
             'nothing: acc
@@ -394,7 +388,7 @@ each2WithIndex as fn [ a ], [ b ], (fn Int, a, b: None): None =
 
 reverse as fn [ a ]: [ a ] =
     fn aList:
-    for [] aList Core.'cons
+    for [] aList (fn a, b: Core.'cons b a)
 
 
 repeat as fn Int, a: [ a ] =
@@ -462,7 +456,7 @@ intersperse as fn a, [ a ]: [ a ] =
 
 
 partitionWhile as fn [ item ], (fn item: Bool): [ item ] & [ item ] =
-    fn f, xs:
+    fn xs, f:
     rec =
         fn acc, rest:
         try rest as

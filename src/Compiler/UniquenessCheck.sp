@@ -297,7 +297,7 @@ requireInEnv as fn [ Name ], Required, Env: Env =
     { env with
     , variables =
         .variables
-        >> List.for __ varNames fn name, a:
+        >> List.for __ varNames fn a, name:
             Dict.update name (Maybe.map (fn var: { var with required }) __) a
     }
 
@@ -341,7 +341,7 @@ doCall as fn Env, @Array Error, Pos, TA.Expression, [ TA.Argument ]: UniOut TA.E
 
     doneArgs as UniOut [ TA.Argument ] =
         uniOutInit []
-        >> List.forReversed __ arguments fn arg, acc:
+        >> List.forReversed __ arguments fn acc, arg:
             acc
             >> uniOutMap (fn _: arg) __
             >> doArgument env @errors pos __
@@ -439,8 +439,8 @@ ParsAcc =
     }
 
 
-doParameter as fn @Array Error, TA.Parameter, ParsAcc: ParsAcc =
-    fn @errors, par, acc:
+doParameter as fn ParsAcc, @Array Error, TA.Parameter: ParsAcc =
+    fn acc, @errors, par:
     # TODO provide new param with resolved type
 
     try par as
@@ -579,13 +579,13 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                     doExpression localEnv @errors block >> uniOutMap (fn expr: pattern & expr) __
 
             allRecycled =
-                Dict.empty >> List.for __ donePatternsAndBlocks (fn d, a: Dict.join d.recycled a)
+                Dict.empty >> List.for __ donePatternsAndBlocks (fn a, d: Dict.join d.recycled a)
 
             allRequired =
-                Dict.empty >> List.for __ donePatternsAndBlocks (fn d, a: Dict.join d.required a)
+                Dict.empty >> List.for __ donePatternsAndBlocks (fn a, d: Dict.join d.required a)
 
             allSpent =
-                Dict.empty >> List.for __ donePatternsAndBlocks (fn d, a: Dict.join d.spent a)
+                Dict.empty >> List.for __ donePatternsAndBlocks (fn a, d: Dict.join d.spent a)
 
             # Pass 2:
             newPatternsAndBlocks as [ TA.Pattern & TA.Expression ] =
@@ -758,7 +758,7 @@ doVariable as fn Env, @Array Error, Pos, Name, e: UniOut e =
 doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType: UniOut TA.Expression =
     fn env, pos, @errors, pars, body, bodyType:
     { localEnv, parsToBeRecycled, parsToBeSpent } =
-        { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ pars (doParameter @errors __ __)
+        { localEnv = env, parsToBeRecycled = Dict.empty, parsToBeSpent = Dict.empty } >> List.for __ pars (doParameter __ @errors __)
 
     doneBody =
         doExpression localEnv @errors body

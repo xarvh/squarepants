@@ -58,7 +58,7 @@ Self =
 
 toCaModules as fn [ Self ]: Dict UMR CA.Module =
     fn selfs:
-    List.for Dict.empty selfs fn self, modulesByUmr:
+    List.for Dict.empty selfs fn modulesByUmr, self:
         'USR umr name =
             self.usr
 

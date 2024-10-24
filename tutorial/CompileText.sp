@@ -101,7 +101,7 @@ exposedNames as [ Self.Self ] =
 
 
 exports as Meta.Exports =
-    List.for Dict.empty exposedNames fn self, exp:
+    List.for Dict.empty exposedNames fn exp, self:
 
         'USR ('UMR importsPath sourceDir modulePath) name = self.usr
 

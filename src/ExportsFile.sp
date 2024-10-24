@@ -101,14 +101,14 @@ moduleReader as SPON.Reader { exposes as Dict Name Bool, path as Text } =
     >> SPON.onAcc fn path:
     SPON.maybe (SPON.field "exposes" (SPON.many exposesReader))
     >> SPON.onAcc fn maybeExposes:
-    SPON.return { exposes = List.for Dict.empty (Maybe.withDefault [] maybeExposes) (fn e, d: Dict.insert e.name e.open d), path }
+    SPON.return { exposes = List.for Dict.empty (Maybe.withDefault [] maybeExposes) (fn d, e: Dict.insert e.name e.open d), path }
 
 
 exportsFileReader as SPON.Reader ExportsFile =
     SPON.field "module" moduleReader
     >> SPON.many
     >> SPON.onAcc fn modules:
-    List.for Dict.empty modules fn module, d:
+    List.for Dict.empty modules fn d, module:
         Dict.insert module.path module.exposes d
     >> SPON.return
 

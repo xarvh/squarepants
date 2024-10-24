@@ -123,8 +123,8 @@ T =
     }
 
 
-outcomesRec as fn Text, Test, [ T ]: [ T ] =
-    fn path, test, accum:
+outcomesRec as fn [ T ], Text, Test: [ T ] =
+    fn accum, path, test:
     try test as
 
         'single name code f:
@@ -137,7 +137,7 @@ outcomesRec as fn Text, Test, [ T ]: [ T ] =
             thing :: accum
 
         'group pathSegment ts:
-            List.for accum ts (outcomesRec (path .. pathSegment .. " / ") __ __)
+            List.for accum ts (outcomesRec __ (path .. pathSegment .. " / ") __)
 
 
 getName as fn Test: Text =
@@ -151,7 +151,7 @@ getName as fn Test: Text =
 flattenAndRun as fn [ Test ]: [ { code as Text, name as Text, outcome as TestOutcome } ] =
     fn tests:
     flattened as [ T ] =
-        outcomesRec "" ('group "" tests) [] >> List.map __ (fn r: if Text.contains "SKIP" r.name then { r with getOutcome = fn 'none: 'skipped } else r)
+        outcomesRec [] "" ('group "" tests) >> List.map __ (fn r: if Text.contains "SKIP" r.name then { r with getOutcome = fn 'none: 'skipped } else r)
 
     onlies as [ T ] =
         List.filter flattened (fn r: Text.contains "ONLY" r.name)

@@ -57,4 +57,4 @@ toList as fn Set a: [ a ] with a NonFunction =
 
 
 fromList as fn [ a ]: Set a with a NonFunction =
-    List.for empty __ insert
+    List.for empty __ fn s, k: insert k s

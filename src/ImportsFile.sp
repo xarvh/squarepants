@@ -64,11 +64,11 @@ insertModules as fn fn Text: Meta.Location, @Array Text, Text, [ Module ], Impor
         else
             # TODO check for duplicate platforms!
             Dict.empty
-            >> List.for __ modules fn module, dict:
+            >> List.for __ modules fn dict, module:
                 Dict.insert module.path (modulePathToLocationFn module.path) dict
             >> Dict.insert platformName __ imports.platforms
 
-    List.for imports modules fn module, imp:
+    List.for imports modules fn imp, module:
         location =
             modulePathToLocationFn module.path
 
@@ -82,7 +82,7 @@ insertModules as fn fn Text: Meta.Location, @Array Text, Text, [ Module ], Impor
 
         # Insert globals
         globalNameToLocation =
-            List.for imp.globalNameToLocation module.globals fn globalName, dict:
+            List.for imp.globalNameToLocation module.globals fn dict, globalName:
                 # TODO check that there is no duplication
                 Dict.insert globalName location dict
 
@@ -97,8 +97,8 @@ ToImportsPars =
     }
 
 
-insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
-    fn pars, @errors, sourceDir, imports:
+insertSourceDir as fn Imports, ToImportsPars, @Array Text, SourceDir: Imports =
+    fn imports, pars, @errors, sourceDir:
 
     Meta.'importsPath rootDirectory importsDir =
         pars.importsPath
@@ -114,8 +114,8 @@ insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
     insertModules modulePathToLocation @errors "" sourceDir.modules imports
 
 
-insertLibrary as fn ToImportsPars, @Array Text, Library, Imports: Imports =
-    fn pars, @errors, library, imports:
+insertLibrary as fn Imports, ToImportsPars, @Array Text, Library: Imports =
+    fn imports, pars, @errors, library:
     try parseLibrarySource library.source as
 
         'err msg:
@@ -155,8 +155,8 @@ toImports as fn ToImportsPars, ImportsFile: Res Imports =
 
     meta =
         Meta.initImports
-        >> List.for __ importsFile.libraries (insertLibrary pars @errors __ __)
-        >> List.for __ importsFile.sourceDirs (insertSourceDir pars @errors __ __)
+        >> List.for __ importsFile.libraries (insertLibrary __ pars @errors __)
+        >> List.for __ importsFile.sourceDirs (insertSourceDir __ pars @errors __)
 
     errs =
         Array.toList @errors >> List.map __ (fn msg: Error.'raw [ msg ])
@@ -235,8 +235,8 @@ modulesFileReader as SPON.Reader [ RootEntry ] =
 
 fromText as fn Text, Text: Res ImportsFile =
     fn sponName, sponContent:
-    insert as fn RootEntry, ImportsFile: ImportsFile =
-        fn rootEntry, mf:
+    insert as fn ImportsFile, RootEntry: ImportsFile =
+        fn mf, rootEntry:
         try rootEntry as
             'lib lib: { mf with libraries = lib :: mf.libraries }
             'dir dir: { mf with sourceDirs = dir :: mf.sourceDirs }

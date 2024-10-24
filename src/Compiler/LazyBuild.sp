@@ -115,8 +115,8 @@ collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Res None =
             collectRequiredUsrs env @state
 
 
-expandAndInsertType as fn @CollectDependenciesState, @Array Error, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, usr, env0:
+expandAndInsertType as fn @CollectDependenciesState, @Array Error, Compiler/TypeCheck.Env, USR: Compiler/TypeCheck.Env =
+    fn @state, @errors, env0, usr:
     try Hash.get @state.done usr as
 
         'nothing:
@@ -137,8 +137,8 @@ expandAndInsertType as fn @CollectDependenciesState, @Array Error, USR, Compiler
                     env0
 
 
-typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, @lastUnificationVarId, usr, env0:
+typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, Compiler/TypeCheck.Env, USR: Compiler/TypeCheck.Env =
+    fn @state, @errors, @lastUnificationVarId, env0, usr:
 #    log "typechecking:" (Human/Type.usrToText env0 usr)
 
     try Hash.get @state.done usr as
@@ -153,8 +153,8 @@ typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, USR, Co
                 _: env0
 
 
-evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ USR ], Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, @lastUnificationVarId, circular, env0:
+evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, Compiler/TypeCheck.Env, [ USR ]: Compiler/TypeCheck.Env =
+    fn @state, @errors, @lastUnificationVarId, env0, circular:
         # TODO do all aliases first, then all values, otherwise Compiler/TypeCheck.translateRaw will go infinite
 
         try circular as
@@ -164,7 +164,7 @@ evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ US
                     env0
                 else
                     # Circular values
-                    List.for env0 circular fn usr, envX:
+                    List.for env0 circular fn envX, usr:
                         try Hash.get @state.done usr as
 
                             'just { with  def = 'valueDef def }:

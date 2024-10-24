@@ -106,7 +106,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ (fn usr & override, d: Dict.insert (EA.translateUsr usr) override d)
+    >> List.for Dict.empty __ (fn d, usr & override: Dict.insert (EA.translateUsr usr) override d)
 
 
 unaryPlus as Override =
@@ -239,7 +239,7 @@ maybeOverrideUsrForConstructor as fn Env, EA.TranslatedUsr: JA.Expr =
 
 accessAttrs as fn [ Text ], JA.Expr: JA.Expr =
     fn attrPath, e:
-    List.for e attrPath JA.'accessWithDot
+    List.for e attrPath (fn a, b: JA.'accessWithDot b a)
 
 
 translateName as fn Name: Text =
@@ -511,7 +511,7 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
 
                 head :: tail:
                     head
-                    >> List.for __ tail (fn test, expr: JA.'binop "&&" test expr)
+                    >> List.for __ tail (fn expr, test: JA.'binop "&&" test expr)
                     >> 'inline
 
         EA.'isLiteralText text b:
@@ -549,7 +549,7 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
         EA.'literalRecord maybeExtend attrNamesAndValues:
             obj =
                 Dict.empty
-                >> List.for __ attrNamesAndValues fn name & value, d:
+                >> List.for __ attrNamesAndValues fn d, name & value:
                     Dict.insert name (translateExpressionToExpression env 'true value) d
                 >> JA.'record
 
@@ -639,7 +639,7 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
     env as Env =
         {
         , overrides =
-            List.for (coreOverrides 'none) platformOverrides fn usr & runtimeName, d:
+            List.for (coreOverrides 'none) platformOverrides fn d, usr & runtimeName:
                 Dict.insert (EA.translateUsr usr) (function runtimeName) d
         }
 

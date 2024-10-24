@@ -73,7 +73,7 @@ translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.E
 
         TA.'patternConstructor _ path pas:
             accum
-            >> List.forWithIndex __ pas fn index, pa, a:
+            >> List.forWithIndex __ pas fn a, index, pa:
                 translatePatternRec pa (EA.'constructorAccess index accessExpr) a
 
         TA.'patternRecord _ attrs:
@@ -97,7 +97,7 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
 
         TA.'patternConstructor _ usr pas:
             EA.'isConstructor usr valueToTest :: accum
-            >> List.forWithIndex __ pas fn index, argPattern, a:
+            >> List.forWithIndex __ pas fn a, index, argPattern:
                 testPattern argPattern (EA.'constructorAccess index valueToTest) a
 
         TA.'patternRecord _ attrs:
@@ -133,7 +133,7 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
                         translatePattern pa (EA.'localVariable mainName)
 
                     wrapWithArgumentLetIn =
-                        fn type & varName & letExpression, inExpression:
+                        fn inExpression, type & varName & letExpression:
                         EA.'letIn
                             {
                             , inExpression
@@ -183,7 +183,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 
             wrappedBody & eaPars =
                 eaBody & []
-                >> List.forReversed __ taPars fn taPar, bodyAcc & eaParsAcc:
+                >> List.forReversed __ taPars fn bodyAcc & eaParsAcc, taPar:
                     bodyX & eaPar =
                         newEnv =
                             { env with genVarCounter = List.length eaParsAcc + .genVarCounter }
@@ -238,8 +238,8 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'localVariable tryName & wrap & env_
 
             # 2. if-elses
-            addTryPatternAndBlock as fn TA.Pattern & TA.Expression, EA.Expression: EA.Expression =
-                fn pattern & block, nextTryExpression:
+            addTryPatternAndBlock as fn EA.Expression, TA.Pattern & TA.Expression: EA.Expression =
+                fn nextTryExpression, pattern & block:
                 testIfPatternMatches as EA.Expression =
                     testPattern pattern valueExpression []
                     >> List.reverse
@@ -250,7 +250,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
 
                 whenConditionMatches as EA.Expression =
                     translateExpression newEnv block
-                    >> List.for __ namesAndExpressions fn type & name & letExpression, inExpression:
+                    >> List.for __ namesAndExpressions fn inExpression, type & name & letExpression:
                         EA.'letIn { inExpression, letExpression, maybeName = 'just name, type }
 
                 EA.'conditional testIfPatternMatches whenConditionMatches nextTryExpression
@@ -299,8 +299,8 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     namesAndExpressions =
                         translatePattern valueDef.pattern (EA.'localVariable mainName)
 
-                    wrapWithUnpackedPatternVar as fn TA.FullType & Name & EA.Expression, EA.Expression: EA.Expression =
-                        fn type & name & letExpression, inExpression:
+                    wrapWithUnpackedPatternVar as fn EA.Expression, TA.FullType & Name & EA.Expression: EA.Expression =
+                        fn inExpression, type & name & letExpression:
                         EA.'letIn
                             {
                             , inExpression

@@ -56,12 +56,7 @@ indent_spaces as fn Int: Indent =
 
 
 indent_width as fn Indent: Int =
-    List.for 0 __ indent_combine
-
-
-indent_combine as fn Int, Int: Int =
-    fn pos, i:
-    pos + i
+    List.for 0 __ (__ + __)
 
 
 # TODO: Squarepants does not have a strategy to deal with Tabs vs Spaces, it just rejects them.
@@ -207,7 +202,7 @@ mkIndentedLine as fn Line: Indented Line =
 # | A vertical stack of @Block@s.  The left edges of all the @Block@s will be aligned.
 stack as fn [ Block ]: Block =
     stackForce as fn Block, Block: Block =
-        fn b1, b2:
+        fn b2, b1:
         toLines as fn Block: [ Indented Line ] =
             fn b:
             try b as
@@ -292,8 +287,8 @@ rowOrStackForce as fn Bool, Maybe Line, [ Block ]: Block =
 
                     'just (lines & mkLine):
                         try joiner as
-                            'nothing: for1 lines 'row
-                            'just j: for1 (List.intersperse j lines) 'row
+                            'nothing: for1 lines (fn a, b: 'row b a)
+                            'just j: for1 (List.intersperse j lines) (fn a, b: 'row b a)
                         >> mkLine
 
                     _:
@@ -326,8 +321,8 @@ rowOrIndentForce as fn Bool, Maybe Line, [ Block ]: Block =
                     else
                         # TODO this seems to be repeated above.
                         try joiner as
-                            'nothing: for1 reversedLines 'row
-                            'just j: for1 (List.intersperse j reversedLines) 'row
+                            'nothing: for1 reversedLines (fn a, b: 'row b a)
+                            'just j: for1 (List.intersperse j reversedLines) (fn a, b: 'row b a)
                         >> mkLine
 
                 _:

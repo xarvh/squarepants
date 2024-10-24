@@ -741,7 +741,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
         def.pattern
         >> CA.patternNames
         >> List.filterMap __ (fn entry: entry.maybeAnnotation)
-        >> List.for Dict.empty __ (fn annotation, acc: Dict.join annotation.univars acc)
+        >> List.for Dict.empty __ (fn acc, annotation: Dict.join annotation.univars acc)
         >> Dict.for Dict.empty __ fn annotatedId, 'none, acc:
             try Dict.get annotatedId localEnv.annotatedUnivarsByOriginalId as
                 'nothing: acc
@@ -1180,7 +1180,7 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
       ----> At the end of a Definition we take the type tyvars, see which ones are free, then resolve them.
     #]
     bodyEnv =
-        List.for2WithIndex env caParameters expectedParameterTypes fn index, caParameter, expectedParameterType, bodyEnvAcc:
+        List.for2WithIndex env caParameters expectedParameterTypes fn bodyEnvAcc, index, caParameter, expectedParameterType:
             typedParameter & parameterType & envX =
                 doParameter @state bodyEnvAcc index expectedParameterType caParameter
 
@@ -1756,7 +1756,7 @@ doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.
 
     uni & patternsAndExpressions =
         'uni & []
-        >> List.forReversed __ caPatternsAndExpressions fn u & pa & exp, uniX & acc:
+        >> List.forReversed __ caPatternsAndExpressions fn uniX & acc, u & pa & exp:
             patternOut as PatternOut =
                 inferPattern env u pa @state
 
@@ -1809,7 +1809,7 @@ inferArgument as fn Env, CA.Argument, @State: TA.Argument =
 
                     'just var:
                         var.type.raw
-                        >> List.for __ attrPath fn attrName, tyAcc:
+                        >> List.for __ attrPath fn tyAcc, attrName:
                             inferRecordAccess env pos attrName tyAcc @state
 
             TA.'argumentRecycle pos raw attrPath name
@@ -1857,7 +1857,7 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
         CA.'patternConstructor pos usr arguments:
             argumentOuts & newEnv =
                 [] & env
-                >> List.forReversed __ arguments fn arg, argOuts & envX:
+                >> List.forReversed __ arguments fn argOuts & envX, arg:
                     out =
                         inferPattern envX uni arg @state
 
@@ -2095,7 +2095,7 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
 checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [ CA.Pattern ], @State: TA.Pattern & Env =
     fn env, pos, expectedType, usr, arguments, @state:
     insertArgsOnError as fn Env: Env =
-        List.for __ arguments fn arg, envX:
+        List.for __ arguments fn envX, arg:
             out =
                 inferPattern envX expectedType.uni arg @state
 
@@ -2127,8 +2127,8 @@ checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [ CA.Pattern ], @State
 
                 patternError pos & insertArgsOnError env
             else
-                checkArg as fn CA.Pattern & TA.ParType, Env & [ TA.Pattern ]: Env & [ TA.Pattern ] =
-                    fn arg & parType, envX & args:
+                checkArg as fn Env & [ TA.Pattern ], CA.Pattern & TA.ParType: Env & [ TA.Pattern ] =
+                    fn envX & args, arg & parType:
                         taArg & envX1 =
                             try parType as
                                 TA.'parSp full: checkPattern envX full arg @state
@@ -2343,13 +2343,13 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
         >> List.mapWithIndex __ (fn index, n: n & -index)
 
     paramsByName as Dict Name TA.RawType =
-        List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert n (TA.'typeVar Pos.'g id) d)
+        List.for Dict.empty tyvarNamesAndIds (fn d, n & id: Dict.insert n (TA.'typeVar Pos.'g id) d)
 
     raw =
         translateRawType env paramsByName Dict.empty @errors caRaw
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
-        List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert id { maybeAnnotated = 'just { allowFunctions = 'true, name = n } } d)
+        List.for Dict.empty tyvarNamesAndIds (fn d, n & id: Dict.insert id { maybeAnnotated = 'just { allowFunctions = 'true, name = n } } d)
 
     taConstructor as Instance =
         {

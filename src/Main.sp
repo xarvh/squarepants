@@ -75,8 +75,8 @@ parseArguments as fn [ Option state ], [ Text ], state: Result Text ([ Text ] & 
     optionTexts & others =
         List.partition args (Text.startsWith "--" __)
 
-    findOption as fn Text, state: Result Text state =
-        fn optionText, state:
+    findOption as fn state, Text: Result Text state =
+        fn state, optionText:
         try Text.split "=" optionText as
 
             []:

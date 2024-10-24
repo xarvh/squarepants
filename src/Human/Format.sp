@@ -88,7 +88,7 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
 
                 itemLines
                 >> List.intersperse (Fmt.'text_ ", ") __
-                >> List.for (Fmt.'row openLine Fmt.'space) __ (fn a, b: Fmt.'row b a)
+                >> List.for (Fmt.'row openLine Fmt.'space) __ Fmt.'row
                 >> mkLine
                 >> Fmt.addSuffix closeLine __
 
@@ -261,7 +261,7 @@ unindentBlockComment as fn Int, Text: [ Text ] =
                 # `head` contains a "[#", we already know its lead is `indent`
                 tail
                 >> List.filter __ lineIsNonEmpty
-                >> List.for indent __ fn line, length:
+                >> List.for indent __ fn length, line:
                     min (countLeadingSpaces line) length
 
             head :: List.map tail (Text.dropLeft minLead __)
@@ -684,7 +684,7 @@ formatBinopChain as fn Env, Int, FA.BinopChain: Fmt.Block =
             [ first & _, rest... ]:
                 # op.symbol == ">>"
                 last as FA.Binop =
-                    List.for first rest (fn opX & _, acc: opX)
+                    List.for first rest (fn acc, opX & _: opX)
 
                 last.line > first.line
 

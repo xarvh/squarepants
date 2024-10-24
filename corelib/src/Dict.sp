@@ -283,8 +283,8 @@ merge as fn fn key, a, res: res, fn key, a, b, res: res, fn key, b, res: res, Di
     (leftovers as [ key & a ]) & (intermediateResult as res) =
         for (toList leftDict & initialResult) rightDict stepState
 
-    liftLeftStep as fn key & a, res: res =
-        fn t, res:
+    liftLeftStep as fn res, key & a: res =
+        fn res, t:
         k & v =
             t
 
@@ -440,4 +440,4 @@ toList as fn Dict k v: [ k & v ] =
 
 
 fromList as fn [ key & v ]: Dict key v with key NonFunction =
-    List.for empty __ (fn keyAndValue, dict: insert keyAndValue.first keyAndValue.second dict)
+    List.for empty __ (fn dict, keyAndValue: insert keyAndValue.first keyAndValue.second dict)

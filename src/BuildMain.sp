@@ -217,8 +217,8 @@ ModuleAndPath =
 
 updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     fn fileNames, orig:
-    insertModuleName as fn Text, ImportsFile.SourceDir: ImportsFile.SourceDir =
-        fn name, sd:
+    insertModuleName as fn ImportsFile.SourceDir, Text: ImportsFile.SourceDir =
+        fn sd, name:
         try List.find sd.modules (fn m: m.path == name) as
             'just _: sd
             'nothing: { sd with modules = { globals = [], path = name, visibleAs = name } :: .modules }

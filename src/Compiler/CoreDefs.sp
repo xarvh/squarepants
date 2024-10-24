@@ -345,7 +345,7 @@ binops as [ Op.Binop ] =
 
 
 binopsBySymbol as Dict Text Op.Binop =
-    List.for Dict.empty binops (fn bop, d: Dict.insert bop.symbol bop d)
+    List.for Dict.empty binops (fn d, bop: Dict.insert bop.symbol bop d)
 
 
 #
@@ -605,7 +605,7 @@ insert as fn USR, CA.RawType, [ Name ], Dict Name CA.ValueDef: Dict Name CA.Valu
         >> Dict.map (fn n, pos: { nonFn = if Set.member n nonFn then 'just Pos.'n else 'nothing }) __
 
     {
-    , directDeps = Compiler/MakeCanonical.typeDeps raw Dict.empty
+    , directDeps = Compiler/MakeCanonical.typeDeps Dict.empty raw
     , maybeAnnotation =
         'just
             {
@@ -629,7 +629,7 @@ coreModule as CA.Module =
         , boolDef
         , listDef
         ]
-        >> List.for Dict.empty __ fn def, dict:
+        >> List.for Dict.empty __ fn dict, def:
             'USR _ name =
                 def.usr
 
@@ -643,12 +643,12 @@ coreModule as CA.Module =
         , nilDef
         , consDef
         ]
-        >> List.for Dict.empty __ (fn def, dict: Dict.insert def.name def dict)
+        >> List.for Dict.empty __ (fn dict, def: Dict.insert def.name def dict)
 
     valueDefs as Dict Name CA.ValueDef =
         Dict.empty
-        >> List.for __ [ unaryPlus, unaryMinus ] (fn unop, dict: insert unop.usr unop.type [] dict)
-        >> List.for __ binops (fn binop, dict: insert binop.usr binop.type binop.nonFn dict)
+        >> List.for __ [ unaryPlus, unaryMinus ] (fn dict, unop: insert unop.usr unop.type [] dict)
+        >> List.for __ binops (fn dict, binop: insert binop.usr binop.type binop.nonFn dict)
 
     {
     , aliasDefs = Dict.empty

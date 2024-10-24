@@ -779,7 +779,7 @@ posRange as fn [ FA.Expression ]: Pos =
 
 stackCommentsReversedAsStatements as fn [ FA.Comment ], [ FA.Statement ]: [ FA.Statement ] =
     fn comments, acc:
-    List.forReversed acc comments fn comment, accN:
+    List.forReversed acc comments fn accN, comment:
         FA.'commentStatement comment :: accN
 
 
@@ -904,7 +904,7 @@ parse as fn Env, [ Token ], [ FA.Statement ]: Res [ FA.Statement ] =
 
         Parser.'rejected:
             findMin =
-                fn { with  tokens }, best:
+                fn best, { with  tokens }:
                 if List.length tokens < List.length best then tokens else best
 
             farthestParsed as [ Token ] =
@@ -917,7 +917,7 @@ parse as fn Env, [ Token ], [ FA.Statement ]: Res [ FA.Statement ] =
 
                 [] & [ 'token start end0 _, rest... ]:
                     end =
-                        List.for end0 rest (fn 'token _ endX _, _: endX)
+                        List.for end0 rest (fn _, 'token _ endX _: endX)
 
                     Error.res env.errorModule (Pos.'p start end) [ "I got to the end of the statement and I can't make sense of it. =(" ]
 
@@ -935,7 +935,7 @@ textToFormattableModule as fn Env: Res FA.Module =
     #Debug.benchStart None
 
     errors & reversedStatements =
-        List.for ([] & []) tokenChunks fn tokens, es & revStats:
+        List.for ([] & []) tokenChunks fn es & revStats, tokens:
             try parse env tokens revStats as
                 'ok newReversedStatements: es & newReversedStatements
                 'err e: [ e, es... ] & revStats

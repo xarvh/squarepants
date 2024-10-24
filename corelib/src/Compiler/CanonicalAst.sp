@@ -180,7 +180,7 @@ typeTyvars as fn RawType: Dict Name Pos =
     fn raw:
     fromList as fn [ RawType ]: Dict Name Pos =
         fn list:
-        List.for Dict.empty list (fn item, acc: Dict.join acc (typeTyvars item))
+        List.for Dict.empty list (fn acc, item: Dict.join acc (typeTyvars item))
 
     try raw as
         'typeNamed _ _ args: fromList args
@@ -203,7 +203,7 @@ typeUnivars as fn RawType: Dict UnivarId None =
     fn raw:
     fromList as fn [ RawType ]: Dict UnivarId None =
         fn list:
-        List.for Dict.empty list (fn item, acc: Dict.join acc (typeUnivars item))
+        List.for Dict.empty list (fn acc, item: Dict.join acc (typeUnivars item))
 
     insertUni as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
         fn uni, acc:
@@ -211,8 +211,8 @@ typeUnivars as fn RawType: Dict UnivarId None =
             'depends uid: Dict.insert uid 'none acc
             _: acc
 
-    parUnivars as fn ParType, Dict UnivarId None: Dict UnivarId None =
-        fn par, acc:
+    parUnivars as fn Dict UnivarId None, ParType: Dict UnivarId None =
+        fn acc, par:
         try par as
 
             'parRe _:
@@ -260,7 +260,7 @@ patternTyvars as fn Pattern: Dict Name { nonFn as Maybe Pos } =
         'patternAny _ _ 'nothing: Dict.empty
         'patternLiteralText _ _: Dict.empty
         'patternLiteralNumber _ _: Dict.empty
-        'patternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternTyvars arg))
+        'patternConstructor _ _ args: List.for Dict.empty args (fn acc, arg: Dict.join acc (patternTyvars arg))
         'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
 
 
@@ -271,22 +271,22 @@ patternUnivars as fn Pattern: Dict UnivarId None =
         'patternAny _ _ 'nothing: Dict.empty
         'patternLiteralText _ _: Dict.empty
         'patternLiteralNumber _ _: Dict.empty
-        'patternConstructor _ _ args: List.for Dict.empty args (fn arg, acc: Dict.join acc (patternUnivars arg))
+        'patternConstructor _ _ args: List.for Dict.empty args (fn acc, arg: Dict.join acc (patternUnivars arg))
         'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternUnivars arg))
 
 
 patternNames as fn Pattern: [ { maybeAnnotation as Maybe Annotation, name as Name, pos as Pos } ] =
     rec =
-        fn p, acc:
+        fn acc, p:
         try p as
             'patternAny pos 'nothing _: acc
             'patternAny pos ('just name) maybeAnnotation: [ { maybeAnnotation, name, pos }, acc... ]
             'patternLiteralNumber pos _: acc
             'patternLiteralText pos _: acc
             'patternConstructor pos path ps: List.for acc ps rec
-            'patternRecord pos _ ps: Dict.for acc ps (fn k, v, a: rec v a)
+            'patternRecord pos _ ps: Dict.for acc ps (fn k, v, a: rec a v)
 
-    rec __ []
+    rec [] __
 
 
 expressionPos as fn Expression: Pos =
