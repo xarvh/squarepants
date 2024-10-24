@@ -96,7 +96,7 @@ parseArguments as fn [ Option state ], [ Text ], state: Result Text ([ Text ] & 
 
     initState
     >> List.forRes __ optionTexts findOption
-    >> Result.map (Tuple.pair others __) __
+    >> Result.map __ (Tuple.pair others __)
 
 
 #

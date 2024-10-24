@@ -261,7 +261,7 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'call p (rec ref) (List.map args (resolveArg saf __))
 
         'record p maybeExt attrs:
-            'record p (Maybe.map rec maybeExt) (Dict.map (fn k, v: rec v) attrs)
+            'record p (Maybe.map maybeExt rec) (Dict.map (fn k, v: rec v) attrs)
 
         'recordAccess p name exp:
             'recordAccess p name (rec exp)
@@ -304,7 +304,7 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
 resolveValueDef as fn SubsAsFns, ValueDef: ValueDef =
     fn saf, def:
     { def with
-    , body = Maybe.map (resolveExpression saf __) .body
+    , body = Maybe.map .body (resolveExpression saf __)
     , pattern = resolvePattern saf .pattern
     , type = resolveFull saf .type
     }

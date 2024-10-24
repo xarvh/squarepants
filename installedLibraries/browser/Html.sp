@@ -123,7 +123,7 @@ onClick as fn msg: Attr msg =
 
 onInput as fn fn Text: msg: Attr msg =
     fn textToMsg:
-    on "input" (fn e: VirtualDom.eventToText [ "target", "value" ] e >> Result.map textToMsg __)
+    on "input" (fn e: VirtualDom.eventToText [ "target", "value" ] e >> Result.map __ textToMsg)
 
 
 spellcheck as fn Bool: Attr msg =

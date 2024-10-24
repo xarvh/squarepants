@@ -57,13 +57,13 @@ firstDefinition as fn Text: Result Text CA.ValueDef =
     fn code:
     code
     >> textToModule
-    >> onOk (fn mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe "firstDefinition fail" __)
+    >> onOk (fn mod: mod.valueDefs >> Dict.values >> List.head >> Result.fromMaybe __ "firstDefinition fail")
 
 
 firstDefinitionStripDeps as fn Text: Result Text CA.ValueDef =
     __
     >> firstDefinition
-    >> Result.map (fn v: { v with directDeps = Dict.empty }) __
+    >> Result.map __ (fn v: { v with directDeps = Dict.empty })
 
 
 firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
@@ -71,7 +71,7 @@ firstEvaluation as fn Text: fn Text: Result Text CA.Expression =
     fn code:
     code
     >> firstDefinition
-    >> onOk (fn def: Maybe.toResult "body is 'nothing" def.maybeBody)
+    >> onOk (fn def: Maybe.toResult def.maybeBody "body is 'nothing")
 
 
 # TODO move this to Helpers?
@@ -85,7 +85,7 @@ transformAB as fn Text: Result Text (CA.ValueDef & CA.ValueDef) =
 
     code
     >> textToModule
-    >> onOk (fn x: x >> findAB >> Result.fromMaybe "findAB fail" __)
+    >> onOk (fn x: x >> findAB >> Result.fromMaybe __ "findAB fail")
 
 
 shouldHaveSameAB as fn fn ab: c: Test.CodeExpectation (ab & ab) =

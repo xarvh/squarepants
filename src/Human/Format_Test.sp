@@ -28,7 +28,7 @@ format as fn Text: Result Text Text =
         , keepComments = 'true
         , stripLocations = 'false
         }
-    >> Result.mapError toHuman __
+    >> Result.mapError __ toHuman
     >> onOk fn faStatements:
     env as Human/Format.Env =
         {

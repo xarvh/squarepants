@@ -835,11 +835,6 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
 # Expression
 #
 #
-maybe_map as fn Maybe a, fn a: b: Maybe b =
-    fn m, f:
-    Maybe.map f m
-
-
 doLiteralNumber as fn @State, Env, Maybe TA.FullType, Pos, Int: TA.Expression & TA.FullType =
     fn @state, env, expectedType, pos, n:
     maybeInvalidRaw =
@@ -924,7 +919,7 @@ doVariable =
                 generalizedType =
                     generalize env pos ref variableInstance @state
 
-                maybe_map expectedType fn fullType:
+                Maybe.map expectedType fn fullType:
                     checkUni env pos { given = generalizedType.uni, required = fullType.uni } @state
 
                     addEquality env pos 'why_Annotation generalizedType.raw fullType.raw @state
@@ -949,7 +944,7 @@ doConstructor =
                     generalize env pos ('refGlobal usr) cons @state
 
                 # Constructor literal is always unique, so we don't care about uniqueness
-                maybe_map expectedType fn { with  raw }:
+                Maybe.map expectedType fn { with  raw }:
                     try raw as
 
                         TA.'typeExact _ _ _:
@@ -1128,7 +1123,7 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
 
         TA.'error pos & fullTypeError
 
-    Result.recoverFromError errorToOk fn _:
+    Result.resolveErrorsWith errorToOk fn _:
     try expectedType as
 
         'just { with  raw = TA.'typeFn _ parameterTypes returnType }:
@@ -2244,8 +2239,8 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
             newTyvarId @state & { maybeAnnotated = 'just { allowFunctions = nonFn == 'nothing, name = tyvarName } }
 
         def.maybeAnnotation
-        >> Maybe.map (fn ann: Dict.map zzzz ann.tyvars) __
-        >> Maybe.withDefault Dict.empty __
+        >> Maybe.map __ (fn ann: Dict.map zzzz ann.tyvars)
+        >> Maybe.withDefault __ Dict.empty
 
     nameToType as Dict Name TA.RawType =
         Dict.map (fn k, id & classes: TA.'typeVar Pos.'g id) nameToIdAndClasses

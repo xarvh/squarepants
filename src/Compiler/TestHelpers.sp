@@ -52,7 +52,7 @@ errorToStrippedText as fn Error: Text =
 
 
 resErrorToStrippedText as fn Res a: Result Text a =
-    Result.mapError errorToStrippedText __
+    Result.mapError __ errorToStrippedText
 
 
 #

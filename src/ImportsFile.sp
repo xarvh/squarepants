@@ -191,9 +191,9 @@ moduleReader as SPON.Reader Module =
     >> SPON.onAcc fn globals:
     SPON.return
         {
-        , globals = Maybe.withDefault [] globals
+        , globals = Maybe.withDefault globals []
         , path = path
-        , visibleAs = Maybe.withDefault path visibleAs
+        , visibleAs = Maybe.withDefault visibleAs path
         }
 
 
@@ -207,7 +207,7 @@ libraryReader as SPON.Reader Library =
     SPON.return
         {
         , modules = modules
-        , platform = Maybe.withDefault "" platform
+        , platform = Maybe.withDefault platform ""
         , source = source
         }
 
@@ -243,4 +243,4 @@ fromText as fn Text, Text: Res ImportsFile =
 
     sponContent
     >> SPON.read modulesFileReader sponName __
-    >> Result.map (List.for init __ insert) __
+    >> Result.map __ (List.for init __ insert)

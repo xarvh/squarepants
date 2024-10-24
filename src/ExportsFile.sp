@@ -78,7 +78,7 @@ toExports as fn Imports, ExportsFile: Res Exports =
 
                         addNameToModule as fn Maybe (Dict Name Meta.ExportOptions): Maybe (Dict Name Meta.ExportOptions) =
                             __
-                            >> Maybe.withDefault Dict.empty __
+                            >> Maybe.withDefault __ Dict.empty
                             >> Dict.insert name { isOpen, usr } __
                             >> 'just
 
@@ -101,7 +101,7 @@ moduleReader as SPON.Reader { exposes as Dict Name Bool, path as Text } =
     >> SPON.onAcc fn path:
     SPON.maybe (SPON.field "exposes" (SPON.many exposesReader))
     >> SPON.onAcc fn maybeExposes:
-    SPON.return { exposes = List.for Dict.empty (Maybe.withDefault [] maybeExposes) (fn d, e: Dict.insert e.name e.open d), path }
+    SPON.return { exposes = List.for Dict.empty (Maybe.withDefault maybeExposes []) (fn d, e: Dict.insert e.name e.open d), path }
 
 
 exportsFileReader as SPON.Reader ExportsFile =

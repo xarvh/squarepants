@@ -158,9 +158,9 @@ map2 as fn [ a ], [ b ], (fn a, b: c): [ c ] =
 mapRes as fn [ a ], (fn a: Result e b): Result e [ b ] =
     fn list, f:
     fun =
-        fn acc, a: Result.map (fn b: [ b, acc... ]) (f a)
+        fn acc, a: Result.map (f a) (fn b: [ b, acc... ])
 
-    forRes [] list fun >> Result.map reverse __
+    forRes [] list fun >> Result.map __ reverse
 
 
 forRes as fn accum, [ item ], (fn accum, item: Result error accum): Result error accum =

@@ -72,7 +72,7 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
             else
                 open :: items
                 >> Fmt.maybeAllSingleLines
-                >> Maybe.map (Tuple.mapFirst List.reverse __) __
+                >> Maybe.map __ (Tuple.mapFirst List.reverse __)
 
         try z as
 
@@ -445,7 +445,7 @@ formatDef as fn Maybe Text, Pos & Name, [ Pos & Name ]: Fmt.Block =
             >> 'just
 
     [
-    , Maybe.map Fmt.textToBlock maybeKeyword
+    , Maybe.map maybeKeyword Fmt.textToBlock
     , 'just << formatFaWord name
     , formattedArgs
     , 'just << Fmt.textToBlock "="
@@ -829,10 +829,10 @@ formatTry as fn Env, FA.Expression, [ FA.Expression & FA.Expression ]: Fmt.Block
     tryOneLine as fn Fmt.Block & Fmt.Block: Result None (Fmt.Line & Fmt.Line) =
         fn pa & bl:
         Fmt.blockAsLine pa
-        >> Maybe.toResult 'none __
+        >> Maybe.toResult __ 'none
         >> onOk fn paLine:
         Fmt.blockAsLine bl
-        >> Maybe.toResult 'none __
+        >> Maybe.toResult __ 'none
         >> onOk fn blockLine:
         'ok (paLine & blockLine)
 

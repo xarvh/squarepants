@@ -17,7 +17,7 @@ installedDir as Text =
 
 
 ioToRes as fn IO.Re a: Res a =
-    Result.mapError (fn err: Error.'raw [ err ]) __
+    Result.mapError __ (fn err: Error.'raw [ err ])
 
 
 getEntryUsr as fn Imports, Text: Res USR =
@@ -388,7 +388,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
         # Either use the first ancestor that contains an imports file...
         searchAncestorDirectories @io (fn isDirectory & fileName: not isDirectory and fileName == importsFileName) "."
         # ...either use the current dir
-        >> Maybe.withDefault "." __
+        >> Maybe.withDefault __ "."
 
     IO.writeStdout @io __ << "Project root is " .. Path.resolve [ projectRoot ] .. "\n"
 
@@ -455,7 +455,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     # Figure out the platform library UMR
     #
     Dict.get pars.platform.name projectImports.platforms
-    >> Maybe.toResult (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform." ]) __
+    >> Maybe.toResult __ (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform." ])
     >> onOk fn platformModuleLocations:
     # TODO properly collect or return errors instead of crashing
     makePlatformUmr as fn Name: UMR =
@@ -506,7 +506,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     # TODO ensure all natives are implemented?
 
     outputFile =
-        Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
+        Maybe.withDefault pars.maybeOutputPath pars.platform.defaultOutputName
 
     # Should be the last
     _entryUsr as EA.TranslatedUsr =

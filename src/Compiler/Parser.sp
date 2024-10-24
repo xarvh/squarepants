@@ -420,7 +420,7 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 >> on fn exps:
                 inlineOrBelowOrIndented closeBracket
                 >> on fn closeRow:
-                FA.'list (closeRow > openRow) (Maybe.withDefault [] exps) >> expressionOk
+                FA.'list (closeRow > openRow) (Maybe.withDefault exps []) >> expressionOk
 
             Token.'curlyBrace openRow Token.'open:
                 extension as Parser (Maybe FA.Expression) =
@@ -449,7 +449,7 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 inlineOrBelowOrIndented closeBrace
                 >> on fn closeRow:
                 {
-                , attrs = Maybe.withDefault [] attrs
+                , attrs = Maybe.withDefault attrs []
                 , isMultiline = closeRow > openRow
                 , maybeExtension
                 }
@@ -609,7 +609,7 @@ functionApplication as fn Env: Parser FA.Expression =
     >> Parser.maybe
     >> on fn indentedArgs:
     args =
-        List.concat [ inlineArgs, Maybe.withDefault [] indentedArgs ]
+        List.concat [ inlineArgs, Maybe.withDefault indentedArgs [] ]
 
     if args == [] then
         # No application
@@ -825,7 +825,7 @@ definitionOrEvaluation as fn Env: Parser FA.Statement =
         'just (maybeNf & body):
             {
             , body
-            , nonFn = Maybe.withDefault [] maybeNf
+            , nonFn = Maybe.withDefault maybeNf []
             , pattern = ex
             }
             >> FA.'valueDef

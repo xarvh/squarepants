@@ -252,11 +252,11 @@ module =
       'err
       onOk
       onErr
+      resolveErrorsWith
       map
       mapError
       fromMaybe
       withDefault
-      recoverFromError
 
 
 module =

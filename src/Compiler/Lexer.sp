@@ -281,7 +281,7 @@ unindent as fn Text: Text =
             >> List.filter __ (fn s: Text.trimLeft s /= "")
             >> List.map __ countLeadingSpaces
             >> List.minimum
-            >> Maybe.withDefault 0 __
+            >> Maybe.withDefault __ 0
 
         lines
         >> List.map __ (Text.dropLeft minLead __)

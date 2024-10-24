@@ -393,7 +393,7 @@ translatePatternRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [ { maybeExp
     >> onOk fn completeness:
     Dict.empty
     >> List.forRes __ attrs (insertPatternRecordAttribute __ env __)
-    >> Result.map (fn x: CA.'patternRecord pos completeness x) __
+    >> Result.map __ (fn x: CA.'patternRecord pos completeness x)
 
 
 translateTuple as fn ReadOnly, (fn FA.Expression: Res ca), FA.BinopChain: Res (Dict Name ca) =
@@ -923,7 +923,7 @@ translateLowercase as fn Env, Pos, { attrPath as [ Name ], maybeModule as Maybe 
         if isLocal then
             'refLocal name >> 'ok
         else
-            env.ro.resolveToUsr pos maybeModule name >> Result.map 'refGlobal __
+            env.ro.resolveToUsr pos maybeModule name >> Result.map __ 'refGlobal
         >> onOk fn ref:
         CA.'variable pos ref
         >> List.for __ attrPath (fn a, b: CA.'recordAccess pos b a)
@@ -999,7 +999,7 @@ translateRecord as fn Env, Pos, Maybe (Maybe FA.Expression), [ FA.RecordAttribut
     fn env, pos, maybeMaybeExtension, attrs:
     zzz as Res (Maybe CA.Expression) =
         try maybeMaybeExtension as
-            'just ('just ext): translateExpression env ext >> Result.map 'just __
+            'just ('just ext): translateExpression env ext >> Result.map __ 'just
             'just 'nothing: error env pos [ "I need to know what record you are updating" ]
             'nothing: 'ok 'nothing
 
@@ -1052,7 +1052,7 @@ translateAndInsertRecordAttribute as fn Dict Text CA.Expression, Env, FA.RecordA
         error env pos [ "duplicate attribute: " .. caName ]
     else
         attr.maybeExpr
-        >> Maybe.withDefault attr.name __
+        >> Maybe.withDefault __ attr.name
         >> translateExpression env __
         >> onOk fn caExpr:
         caAttrsAccum
@@ -1356,12 +1356,12 @@ translateTypeFunctionParameter as fn ReadOnly, FA.Expression: Res CA.ParType =
         FA.'unopCall Op.'unopRecycle faOperand:
             faOperand
             >> translateRawType ro __
-            >> Result.map CA.'parRe __
+            >> Result.map __ CA.'parRe
 
         _:
             expression
             >> translateFullType ro __
-            >> Result.map CA.'parSp __
+            >> Result.map __ CA.'parSp
 
 
 translatePoly as fn ReadOnly, FA.Expression: Res (Uniqueness & FA.Expression) =
@@ -1638,7 +1638,7 @@ translateModule as fn ReadOnly, FA.Module: Res CA.Module =
     # Add all definitions
     module & initEnv ro
     >> List.forRes __ faModule (insertRootStatement __ __)
-    >> Result.map Tuple.first __
+    >> Result.map __ Tuple.first
 
 
 #>> btw Debug.benchStop "translateModule" __

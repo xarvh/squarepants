@@ -52,7 +52,7 @@ map as fn fn a: b, VirtualNode a: VirtualNode b =
 mapAttr as fn (fn a: b), Attr a: Attr b =
     fn f, a:
     try a as
-        'listener n handler: 'listener n (fn ev: Result.map f (handler ev))
+        'listener n handler: 'listener n (fn ev: Result.map (handler ev) f)
         'cssClass b: 'cssClass b
         'cssStyle b c: 'cssStyle b c
         'domAttribute c b: 'domAttribute c b

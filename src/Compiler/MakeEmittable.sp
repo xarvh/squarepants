@@ -199,7 +199,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             >> Dict.toList
             >> List.sortBy Tuple.first __
             >> List.map __ (Tuple.mapSecond (translateExpression env __) __)
-            >> EA.'literalRecord (Maybe.map (translateExpression env __) extends) __
+            >> EA.'literalRecord (Maybe.map extends (translateExpression env __)) __
 
         TA.'call _ ref argsAndTypes:
             EA.'call (translateExpression env ref) (List.map argsAndTypes (translateArgAndType env __))

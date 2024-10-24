@@ -81,7 +81,7 @@ uniOutInit as fn a: UniOut a =
     }
 
 
-uniOutMap as fn fn a: b, UniOut a: UniOut b =
+uniOutMap as fn (fn a: b), UniOut a: UniOut b =
     fn f, { recycled, required, resolved, spent }:
     {
     , recycled
@@ -213,7 +213,6 @@ errorMutatingAnImmutable as fn Env, Text, Pos, @Array Error: None =
 
 errorFunctionsCannotConsumeParentUniques as fn Env, Pos, Dict Name Pos, @Array Error: None =
     fn env, functionPos, spentFromParent, @errors:
-
     blocks =
         spentFromParent
         >> Dict.toList
@@ -298,7 +297,7 @@ requireInEnv as fn [ Name ], Required, Env: Env =
     , variables =
         .variables
         >> List.for __ varNames fn a, name:
-            Dict.update name (Maybe.map (fn var: { var with required }) __) a
+            Dict.update name (Maybe.map __ (fn var: { var with required })) a
     }
 
 
@@ -663,12 +662,8 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
 
             doneDefBody =
                 try valueDef.body as
-                    'just body:
-                        doExpression env1 @errors body
-                        >> uniOutMap 'just __
-
-                    'nothing:
-                        uniOutInit 'nothing
+                    'just body: doExpression env1 @errors body >> uniOutMap 'just __
+                    'nothing: uniOutInit 'nothing
 
             localEnv =
                 env1
@@ -825,9 +820,11 @@ doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType:
 updateValueDef as fn @Array Error, Dict UMR CA.Module, USR & TA.ValueDef: USR & TA.ValueDef =
     fn @errors, modulesByUmr, usr & def:
     try def.body as
-        'nothing: usr & def
-        'just body:
 
+        'nothing:
+            usr & def
+
+        'just body:
             env as Env =
                 {
                 , modulesByUmr

@@ -123,8 +123,8 @@ positionToLineAndColumn as fn Text, Int: { col as Int, line as Int } =
     colNumber =
         lines
         >> List.last
-        >> Maybe.map Text.length __
-        >> Maybe.withDefault 0 __
+        >> Maybe.map __ Text.length
+        >> Maybe.withDefault __ 0
 
     { col = colNumber, line = lineNumber }
 
