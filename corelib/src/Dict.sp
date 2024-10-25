@@ -264,8 +264,11 @@ diff as fn Dict key a, Dict key b: Dict key a with key NonFunction =
 
 merge as fn (fn key, a, res: res), (fn key, a, b, res: res), (fn key, b, res: res), Dict key a, Dict key b, res: res with key NonFunction =
     fn leftStep, bothStep, rightStep, leftDict, rightDict, initialResult:
-    stepState as fn [ key & a ] & res, key, b: [ key & a ] & res =
-        fn list & res, rKey, rValue:
+    #
+    stepState as fn key, b, [ key & a ] & res: [ key & a ] & res =
+        fn rKey, rValue, q:
+        list & res =
+            q
 
         try list as
 
@@ -276,17 +279,12 @@ merge as fn (fn key, a, res: res), (fn key, a, b, res: res), (fn key, b, res: re
                 try Basics.compare lKey rKey as
                     1: list & rightStep rKey rValue res
                     0: rest & bothStep lKey lValue rValue res
-                    _: stepState (rest & leftStep lKey lValue res) rKey rValue
+                    _: stepState rKey rValue (rest & leftStep lKey lValue res)
 
     (leftovers as [ key & a ]) & (intermediateResult as res) =
-        for (toList leftDict & initialResult) rightDict stepState
+        for (toList leftDict & initialResult) rightDict (fn a, k, v: stepState k v a)
 
-    liftLeftStep as fn key & a, res: res =
-        fn k & v, res:
-
-        leftStep k v res
-
-    List.for intermediateResult leftovers liftLeftStep
+    List.for intermediateResult leftovers (fn res, key & a: leftStep key a res)
 
 
 onlyBothOnly as fn Dict key a, Dict key b: Dict key a & Dict key (a & b) & Dict key b =
@@ -315,7 +313,7 @@ map as fn Dict k a, (fn k, a: b): Dict k b =
         'node color key value left right: 'node color key (func key value) (map left func) (map right func)
 
 
-mapRes as fn Dict k a,  (fn k, a: Result e b): Result e (Dict k b) =
+mapRes as fn Dict k a, (fn k, a: Result e b): Result e (Dict k b) =
     fn dict, func:
     try dict as
 
@@ -356,7 +354,7 @@ for as fn b, Dict k v, (fn b, k, v: b): b =
     fn acc, dict, func:
     try dict as
         'empty: acc
-        'node _ key value left right: for (func (for acc left func) key value ) right func
+        'node _ key value left right: for (func (for acc left func) key value) right func
 
 
 forRes as fn b, Dict k v, (fn k, v, b: Result e b): Result e b =

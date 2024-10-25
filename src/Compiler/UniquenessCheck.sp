@@ -619,7 +619,13 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                         doExpression env @errors value
 
                     consumedTwice =
-                        Dict.merge (fn k, v, d: d) (fn k, a, b, d: Dict.insert d k (a & b)) (fn k, v, d: d) spent doneSoFar.spent Dict.empty
+                        Dict.merge
+                            (fn k, v, d: d)
+                            (fn k, a, b, d: Dict.insert d k (a & b))
+                            (fn k, v, d: d)
+                            spent
+                            doneSoFar.spent
+                            Dict.empty
 
                     Dict.each consumedTwice fn n, p1 & p2:
                         errorReferencingConsumedVariable env n p1 p2 @errors
