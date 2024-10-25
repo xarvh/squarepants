@@ -343,7 +343,7 @@ insertPatternRecordAttribute as fn Dict Name CA.Pattern, Env, FA.RecordAttribute
 
     translateAttributeName env.ro attr.name
     >> onOk fn pos & caName & maybeFaType:
-    if Dict.member caName caAttrs then
+    if Dict.has caName caAttrs then
         error env pos [ "duplicate attribute name in pattern: " .. caName ]
     else
         try attr.maybeExpr & maybeFaType as
@@ -1048,7 +1048,7 @@ translateAndInsertRecordAttribute as fn Dict Text CA.Expression, Env, FA.RecordA
     fn caAttrsAccum, env, attr:
     translateAttributeName env.ro attr.name
     >> onOk fn pos & caName & maybeFaType:
-    if Dict.member caName caAttrsAccum then
+    if Dict.has caName caAttrsAccum then
         error env pos [ "duplicate attribute: " .. caName ]
     else
         attr.maybeExpr
@@ -1326,7 +1326,7 @@ translateAndInsertRecordAttributeType as fn Dict Name CA.RawType, ReadOnly, FA.R
     fn caAttrs, ro, faAttr:
     translateAttributeName ro faAttr.name
     >> onOk fn pos & name & maybeFaType:
-    if Dict.member name caAttrs then
+    if Dict.has name caAttrs then
         erroro ro pos [ "Duplicate attribute name: " .. name ]
     else
         try maybeFaType as
@@ -1499,7 +1499,7 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
                 , "I need a 'constructor name here!"
                 ]
     >> onOk fn name & faPars:
-    if Dict.member name constructors then
+    if Dict.has name constructors then
         # TODO "union $whatever has two constructors with the same name!"
         error env pos [ "constructor " .. name .. " is duplicate" ]
     else
@@ -1572,7 +1572,7 @@ insertRootStatement as fn CA.Module & Env, FA.Statement: Res (CA.Module & Env) =
             pos & name =
                 fa.name
 
-            if Dict.member name caModule.aliasDefs or Dict.member name caModule.variantTypeDefs then
+            if Dict.has name caModule.aliasDefs or Dict.has name caModule.variantTypeDefs then
                 error env fa.name.first [ name .. " declared twice!" ]
             else
                 # TODO check that args are not duplicate
@@ -1594,7 +1594,7 @@ insertRootStatement as fn CA.Module & Env, FA.Statement: Res (CA.Module & Env) =
             pos & name =
                 fa.name
 
-            if Dict.member name caModule.aliasDefs or Dict.member name caModule.variantTypeDefs then
+            if Dict.has name caModule.aliasDefs or Dict.has name caModule.variantTypeDefs then
                 error env pos [ name .. " declared twice!" ]
             else
                 # TODO check that args are not duplicate

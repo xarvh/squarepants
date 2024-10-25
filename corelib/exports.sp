@@ -198,8 +198,8 @@ module =
         Dict
         empty
         get
-        member
-        size
+        has
+        length
         insert
         remove
         update

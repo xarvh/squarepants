@@ -529,7 +529,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                 # true should destroy all muts spent by false
                 doneTrue.resolved
                 >> Dict.for __ doneFalse.spent fn exp, name, _:
-                    if Dict.member name doneTrue.spent then
+                    if Dict.has name doneTrue.spent then
                         exp
                     else
                         TA.'destroyIn name exp
@@ -538,7 +538,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                 # false should destroy all muts spent by true
                 doneFalse.resolved
                 >> Dict.for __ doneTrue.spent fn exp, name, _:
-                    if Dict.member name doneFalse.spent then
+                    if Dict.has name doneFalse.spent then
                         exp
                     else
                         TA.'destroyIn name exp
@@ -592,7 +592,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                     finalBlock =
                         blockExpression
                         >> Dict.for __ allSpent fn exp, name, _:
-                            if Dict.member name spent then
+                            if Dict.has name spent then
                                 exp
                             else
                                 TA.'destroyIn name exp
@@ -770,7 +770,7 @@ doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType:
     exprWithDestruction =
         doneBody.resolved
         >> Dict.for __ parsToBeSpent fn exp, name, _:
-            if Dict.member name doneBody.spent then
+            if Dict.has name doneBody.spent then
                 exp
             else
                 TA.'destroyIn name exp

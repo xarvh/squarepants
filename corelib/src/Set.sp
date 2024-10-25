@@ -7,11 +7,11 @@ empty as Set a with a NonFunction =
 
 
 member as fn a, Set a: Bool with a NonFunction =
-    Dict.member
+    Dict.has
 
 
 size as fn Set a: Int with a NonFunction =
-    Dict.size
+    Dict.length
 
 
 isEmpty as fn Set a: Bool with a NonFunction =

@@ -797,11 +797,11 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
             TA.typeTyvars type.raw
 
         actualTyvars =
-            Dict.filter (fn k, v: Dict.member k typeTyvars) freeTyvars
+            Dict.filter (fn k, v: Dict.has k typeTyvars) freeTyvars
 
         tryAsStillBreaksIfUsedImperatively =
             try Dict.get name caNames as
-                'just { with  maybeAnnotation = 'just annotation, pos = p }: addErrorIf (Dict.size annotation.tyvars > Dict.size actualTyvars) localEnv p ('errorTyvarNotIndependent name) @state
+                'just { with  maybeAnnotation = 'just annotation, pos = p }: addErrorIf (Dict.length annotation.tyvars > Dict.length actualTyvars) localEnv p ('errorTyvarNotIndependent name) @state
                 _: 'none
 
         # TODO Also check that all uniqueness vars are independent
@@ -1937,14 +1937,14 @@ inferPatternAny as fn Env, Pos, Uniqueness, Maybe Name, Maybe CA.Annotation, @St
             'just annotation:
                 annotatedTyvarsByName =
                     Dict.for baseEnv.annotatedTyvarsByName annotation.tyvars fn acc, name, { nonFn }:
-                        if Dict.member name acc then
+                        if Dict.has name acc then
                             acc
                         else
                             Dict.insert acc name (newTyvarId @state)
 
                 annotatedUnivarsByOriginalId =
                     Dict.for baseEnv.annotatedUnivarsByOriginalId annotation.univars fn acc, id, _:
-                        if Dict.member id acc then
+                        if Dict.has id acc then
                             acc
                         else
                             Dict.insert acc id (newTyvarId @state)
@@ -2384,7 +2384,7 @@ namedParsToIdParsAndDict as fn [ Name & Pos ]: [ TA.TyvarId ] & Dict Name TA.Raw
 
 getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: CA.Deps =
     fn allAliases, aliasDef:
-    aliasDef.directDeps >> Dict.filter (fn usr, _: Dict.member usr allAliases) __
+    aliasDef.directDeps >> Dict.filter (fn usr, _: Dict.has usr allAliases) __
 
 
 #

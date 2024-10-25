@@ -28,14 +28,14 @@ get as fn key, Dict key v: Maybe v with key NonFunction =
                 _: get targetKey left
 
 
-member as fn key, Dict key v: Bool with key NonFunction =
+has as fn key, Dict key v: Bool with key NonFunction =
     fn key, dict:
     try get key dict as
         'just _: 'true
         'nothing: 'false
 
 
-size as fn Dict key v: Int with key NonFunction =
+length as fn Dict key v: Int with key NonFunction =
     sizeHelp as fn Int, Dict key v: Int =
         fn n, dict:
         try dict as
@@ -254,7 +254,7 @@ join as fn Dict key v, Dict key v: Dict key v with key NonFunction =
 
 intersect as fn Dict key a, Dict key b: Dict key a with key NonFunction =
     fn t1, t2:
-    filter (fn k, _: member k t2) t1
+    filter (fn k, _: has k t2) t1
 
 
 diff as fn Dict key a, Dict key b: Dict key a with key NonFunction =
