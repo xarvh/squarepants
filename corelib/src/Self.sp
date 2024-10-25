@@ -78,18 +78,18 @@ toCaModules as fn [ Self ]: Dict UMR CA.Module =
                         # TODO split between "annotation dependencies" and "definition dependencies"?
                         Dict.filter (fn k, v: v == Meta.'typeDependency) def.directDeps
 
-                    { mod0 with valueDefs = Dict.insert name { def with directDeps, maybeBody } .valueDefs }
+                    { mod0 with valueDefs = Dict.insert .valueDefs name { def with directDeps, maybeBody } }
 
                 'openVarType def:
                     { mod0 with
                     , constructorDefs = todo "constructorDefs"
-                    , variantTypeDefs = Dict.insert name def .variantTypeDefs
+                    , variantTypeDefs = Dict.insert .variantTypeDefs name def
                     }
 
                 'openAliasType def:
-                    { mod0 with aliasDefs = Dict.insert name def .aliasDefs }
+                    { mod0 with aliasDefs = Dict.insert .aliasDefs name defaliasDefs }
 
                 'opaqueType def:
-                    { mod0 with variantTypeDefs = Dict.insert name { def with constructors = Dict.empty } .variantTypeDefs }
+                    { mod0 with variantTypeDefs = Dict.insert .variantTypeDefs name { def with constructors = Dict.empty } }
 
-        Dict.insert umr mod1 modulesByUmr
+        Dict.insert modulesByUmr umr mod1

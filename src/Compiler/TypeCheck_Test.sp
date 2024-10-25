@@ -59,14 +59,14 @@ tyvar as fn Int: TA.RawType =
 freeTyvars as fn [ TA.TyvarId ]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
     List.for Dict.empty ids fn d, id:
-        Dict.insert id { maybeAnnotated = 'nothing } d
+        Dict.insert d id { maybeAnnotated = 'nothing }
 
 
 freeTyvarsAnnotated as fn [ TA.TyvarId & Name ]: Dict TA.TyvarId TA.Tyvar =
     fn ids:
 
     List.for Dict.empty ids fn d, id & name:
-        Dict.insert id { maybeAnnotated = 'just { allowFunctions = 'true, name } } d
+        Dict.insert d id { maybeAnnotated = 'just { allowFunctions = 'true, name } }
 
 
 #
@@ -123,8 +123,8 @@ infer as fn Text: fn Text: Result Text Out =
         { caModuleRaw with
         , valueDefs =
             .valueDefs
-            >> Dict.insert "add" add __
-            >> Dict.insert "reset" reset __
+            >> Dict.insert __ "add" add
+            >> Dict.insert __ "reset" reset
         }
 
     keysToUsrs =
@@ -171,7 +171,7 @@ infer as fn Text: fn Text: Result Text Out =
         Hash.fromList []
 
     ft as Dict TA.TyvarId TA.Tyvar =
-        Dict.for Dict.empty def.freeTyvars (fn id, tc, d: Dict.insert (TA.normalizeTyvarId @hash id) tc d)
+        Dict.for Dict.empty def.freeTyvars (fn d, id, tc: Dict.insert d (TA.normalizeTyvarId @hash id) tc)
 
     'ok
         {

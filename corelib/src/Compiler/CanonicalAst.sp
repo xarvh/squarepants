@@ -208,7 +208,7 @@ typeUnivars as fn RawType: Dict UnivarId None =
     insertUni as fn Uniqueness, Dict UnivarId None: Dict UnivarId None =
         fn uni, acc:
         try uni as
-            'depends uid: Dict.insert uid 'none acc
+            'depends uid: Dict.insert acc uid 'none
             _: acc
 
     parUnivars as fn Dict UnivarId None, ParType: Dict UnivarId None =
@@ -261,7 +261,7 @@ patternTyvars as fn Pattern: Dict Name { nonFn as Maybe Pos } =
         'patternLiteralText _ _: Dict.empty
         'patternLiteralNumber _ _: Dict.empty
         'patternConstructor _ _ args: List.for Dict.empty args (fn acc, arg: Dict.join acc (patternTyvars arg))
-        'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternTyvars arg))
+        'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn acc, k, arg: Dict.join acc (patternTyvars arg))
 
 
 patternUnivars as fn Pattern: Dict UnivarId None =
@@ -272,7 +272,7 @@ patternUnivars as fn Pattern: Dict UnivarId None =
         'patternLiteralText _ _: Dict.empty
         'patternLiteralNumber _ _: Dict.empty
         'patternConstructor _ _ args: List.for Dict.empty args (fn acc, arg: Dict.join acc (patternUnivars arg))
-        'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn k, arg, acc: Dict.join acc (patternUnivars arg))
+        'patternRecord _ _ attrs: Dict.for Dict.empty attrs (fn acc, k, arg: Dict.join acc (patternUnivars arg))
 
 
 patternNames as fn Pattern: [ { maybeAnnotation as Maybe Annotation, name as Name, pos as Pos } ] =
@@ -284,7 +284,7 @@ patternNames as fn Pattern: [ { maybeAnnotation as Maybe Annotation, name as Nam
             'patternLiteralNumber pos _: acc
             'patternLiteralText pos _: acc
             'patternConstructor pos path ps: List.for acc ps rec
-            'patternRecord pos _ ps: Dict.for acc ps (fn k, v, a: rec a v)
+            'patternRecord pos _ ps: Dict.for acc ps (fn a, k, v: rec a v)
 
     rec [] __
 

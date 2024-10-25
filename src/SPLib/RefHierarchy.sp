@@ -22,10 +22,10 @@ resolve as fn (fn key: Dict key whatever), key, [ key ], State key: State key wi
         circ as [ key ] =
             target :: List.takeWhile (fn key: key /= target) path
 
-        { state0 with circular = Dict.insert (Set.fromList circ) circ .circular }
+        { state0 with circular = Dict.insert .circular (Set.fromList circ) circ }
     else
         s =
-            state0 >> Dict.for __ (getEdges target) (fn a, _, d: resolve getEdges a (target :: path) d)
+            state0 >> Dict.for __ (getEdges target) (fn d, a, _: resolve getEdges a (target :: path) d)
 
         { s with resolved = target :: .resolved }
 
@@ -48,6 +48,6 @@ reorder as fn fn node: Dict key whatever, Dict key node: [ [ key ] ] & [ key ] w
         }
 
     stateF =
-        state0 >> Dict.for __ nodesById (fn k, v, d: resolve keyToEdges k [] d)
+        state0 >> Dict.for __ nodesById (fn d, k, v: resolve keyToEdges k [] d)
 
     Dict.values stateF.circular & List.reverse stateF.resolved

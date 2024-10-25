@@ -21,8 +21,8 @@ insertAndGet as Test =
             """
             (fn _:
                  Dict.empty
-                 >> Dict.insert ('just "a") 1 __
-                 >> Dict.insert ('just "b") 2 __
+                 >> Dict.insert __ ('just "a") 1
+                 >> Dict.insert __ ('just "b") 2
                  >> Dict.get ('just "a") __
             )
             (Test.isOkAndEqualTo << 'just 1)
@@ -32,8 +32,8 @@ insertAndGet as Test =
             """
             (fn _:
                  Dict.empty
-                 >> Dict.insert ('just "a") 1 __
-                 >> Dict.insert ('just "b") 2 __
+                 >> Dict.insert __ ('just "a") 1
+                 >> Dict.insert __ ('just "b") 2
                  >> Dict.get ('just "c") __
             )
             (Test.isOkAndEqualTo << 'nothing)
@@ -50,9 +50,9 @@ lists as Test =
             """
             (fn _:
                  Dict.empty
-                 >> Dict.insert ('just "a") 1 __
-                 >> Dict.insert ('just "b") 2 __
-                 >> Dict.insert 'nothing 2 __
+                 >> Dict.insert __ ('just "a") 1
+                 >> Dict.insert __ ('just "b") 2
+                 >> Dict.insert __ 'nothing 2
                  >> Dict.keys
                  >> List.sortBy identity __
             )
@@ -69,8 +69,8 @@ lists as Test =
             """
             (fn _:
                  Dict.empty
-                 >> Dict.insert ('just "a") { a = 1 } __
-                 >> Dict.insert ('just "b") { a = 3 } __
+                 >> Dict.insert __ ('just "a") { a = 1 }
+                 >> Dict.insert __ ('just "b") { a = 3 }
                  >> Dict.values
                  >> List.sortBy identity __
             )

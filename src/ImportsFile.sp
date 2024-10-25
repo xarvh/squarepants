@@ -65,8 +65,8 @@ insertModules as fn fn Text: Meta.Location, @Array Text, Text, [ Module ], Impor
             # TODO check for duplicate platforms!
             Dict.empty
             >> List.for __ modules fn dict, module:
-                Dict.insert module.path (modulePathToLocationFn module.path) dict
-            >> Dict.insert platformName __ imports.platforms
+                Dict.insert dict module.path (modulePathToLocationFn module.path)
+            >> Dict.insert imports.platforms platformName __
 
     List.for imports modules fn imp, module:
         location =
@@ -75,16 +75,16 @@ insertModules as fn fn Text: Meta.Location, @Array Text, Text, [ Module ], Impor
         # Insert module alias
         # TODO check that there is no duplication!
         moduleAliasToLocation =
-            Dict.insert module.visibleAs location imp.moduleAliasToLocation
+            Dict.insert imp.moduleAliasToLocation module.visibleAs location
 
         modulePathToLocation =
-            Dict.insert module.path location imp.modulePathToLocation
+            Dict.insert imp.modulePathToLocation module.path location
 
         # Insert globals
         globalNameToLocation =
             List.for imp.globalNameToLocation module.globals fn dict, globalName:
                 # TODO check that there is no duplication
-                Dict.insert globalName location dict
+                Dict.insert dict globalName location
 
         { globalNameToLocation, moduleAliasToLocation, modulePathToLocation, platforms }
 

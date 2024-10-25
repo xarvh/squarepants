@@ -130,12 +130,10 @@ positionToLineAndColumn as fn Text, Int: { col as Int, line as Int } =
 
 
 highlightSplit as fn Dict Int (Int & Int) & Set Int, Highlight: Dict Int (Int & Int) & Set Int =
-    fn x, h:
-    words & lines =
-        x
+    fn words & lines, h:
 
     try h as
-        'highlightWord { colEnd, colStart, line }: Dict.insert line (colStart & colEnd) words & lines
+        'highlightWord { colEnd, colStart, line }: Dict.insert words line (colStart & colEnd) & lines
         'highlightBlock { lineEnd, lineStart }: words & List.for lines (List.range lineStart lineEnd) (fn a, b: Set.insert b a)
 
 

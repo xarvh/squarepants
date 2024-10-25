@@ -249,7 +249,7 @@ refine_env s env =
             , v
             )
     in
-    Dict.map refine_entry env
+    Dict.map env refine_entry
 
 
 unify : Ty -> Ty -> Subst -> Res Subst

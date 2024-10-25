@@ -78,7 +78,7 @@ translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.E
 
         TA.'patternRecord _ attrs:
             accum
-            >> Dict.for __ attrs fn name, pa & type, a:
+            >> Dict.for __ attrs fn a, name, pa & type:
                 translatePatternRec pa (EA.'recordAccess name accessExpr) a
 
 
@@ -102,7 +102,7 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
 
         TA.'patternRecord _ attrs:
             accum
-            >> Dict.for __ attrs fn name, pa & type, a:
+            >> Dict.for __ attrs fn a, name, pa & type:
                 testPattern pa (EA.'recordAccess name valueToTest) a
 
 

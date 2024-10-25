@@ -193,7 +193,7 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
 
         'typeRecord p maybeId attrs0:
             attrs1 =
-                Dict.map (fn k, v: rec v) attrs0
+                Dict.map attrs0 (fn k, v: rec v)
 
             try maybeId as
 
@@ -261,7 +261,7 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'call p (rec ref) (List.map args (resolveArg saf __))
 
         'record p maybeExt attrs:
-            'record p (Maybe.map maybeExt rec) (Dict.map (fn k, v: rec v) attrs)
+            'record p (Maybe.map maybeExt rec) (Dict.map attrs (fn k, v: rec v))
 
         'recordAccess p name exp:
             'recordAccess p name (rec exp)
@@ -298,7 +298,7 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
         'patternLiteralText pos _: pattern
         'patternAny pos stuff: 'patternAny pos { stuff with type = resolveFull saf .type }
         'patternConstructor pos usr ps: 'patternConstructor pos usr (List.map ps (resolvePattern saf __))
-        'patternRecord pos ps: 'patternRecord pos (Dict.map (fn k, p & t: resolvePattern saf p & resolveRaw saf t) ps)
+        'patternRecord pos ps: 'patternRecord pos (Dict.map ps (fn k, p & t: resolvePattern saf p & resolveRaw saf t))
 
 
 resolveValueDef as fn SubsAsFns, ValueDef: ValueDef =
@@ -349,7 +349,7 @@ patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
         'patternLiteralNumber pos _: Dict.empty
         'patternLiteralText pos _: Dict.empty
         'patternConstructor pos usr ps: List.for Dict.empty ps (fn a, x: x >> patternNames >> Dict.join __ a)
-        'patternRecord pos ps: Dict.for Dict.empty ps (fn k, pa & ty, a: pa >> patternNames >> Dict.join a __)
+        'patternRecord pos ps: Dict.for Dict.empty ps (fn a, k, pa & ty: pa >> patternNames >> Dict.join a __)
 
 
 typeTyvars as fn RawType: Dict TyvarId None =
@@ -357,8 +357,8 @@ typeTyvars as fn RawType: Dict TyvarId None =
     try type as
         'typeExact _ usr args: List.for Dict.empty args (fn acc, a: Dict.join (typeTyvars a) acc)
         'typeVar _ id: Dict.ofOne id 'none
-        'typeRecord _ 'nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
-        'typeRecord _ ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
+        'typeRecord _ 'nothing attrs: Dict.for Dict.empty attrs (fn d, k, a: Dict.join (typeTyvars a) d)
+        'typeRecord _ ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn d, k, a: Dict.join (typeTyvars a) d)
         'typeFn _ ins out: typeTyvars out.raw >> List.for __ ins (fn a, in: Dict.join (in >> toRaw >> typeTyvars) a)
         'typeError: Dict.empty
 
@@ -403,8 +403,8 @@ normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
     try type as
         'typeExact p usr args: 'typeExact p usr (List.map args (normalizeType @hash __))
         'typeFn p pars out: 'typeFn p (mapPars (normalizeType @hash __) pars) { out with raw = normalizeType @hash .raw }
-        'typeRecord p 'nothing attrs: 'typeRecord p 'nothing (Dict.map (fn k, v: normalizeType @hash v) attrs)
-        'typeRecord p ('just id) attrs: 'typeRecord p ('just << normalizeTyvarId @hash id) (Dict.map (fn k, v: normalizeType @hash v) attrs)
+        'typeRecord p 'nothing attrs: 'typeRecord p 'nothing (Dict.map attrs (fn k, v: normalizeType @hash v))
+        'typeRecord p ('just id) attrs: 'typeRecord p ('just << normalizeTyvarId @hash id) (Dict.map attrs (fn k, v: normalizeType @hash v))
         'typeVar p id: 'typeVar p (normalizeTyvarId @hash id)
         'typeError: 'typeError
 
@@ -421,5 +421,5 @@ stripTypePos as fn RawType: RawType =
         'typeVar _ id: 'typeVar pos id
         'typeExact _ usr pars: 'typeExact pos usr (List.map pars rec)
         'typeFn _ pars out: 'typeFn pos (mapPars rec pars) { out with raw = rec .raw }
-        'typeRecord _ maybeId attrs0: 'typeRecord pos maybeId (Dict.map (fn k, v: rec v) attrs0)
+        'typeRecord _ maybeId attrs0: 'typeRecord pos maybeId (Dict.map attrs0 (fn k, v: rec v))
         'typeError: 'typeError

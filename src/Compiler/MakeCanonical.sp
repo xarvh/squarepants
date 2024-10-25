@@ -72,13 +72,13 @@ typeDeps as fn Dict USR DependencyType, CA.RawType: Dict USR DependencyType =
     try type as
 
         CA.'typeNamed _ usr args:
-            acc >> Dict.insert usr 'typeDependency __ >> List.for __ args typeDeps
+            acc >> Dict.insert __ usr 'typeDependency >> List.for __ args typeDeps
 
         CA.'typeAnnotationVariable _ _:
             acc
 
         CA.'typeRecord _ attrs:
-            Dict.for acc attrs (fn k, v, a: typeDeps a v)
+            Dict.for acc attrs (fn a, k, v: typeDeps a v)
 
         CA.'typeError _:
             acc
@@ -99,11 +99,11 @@ patternDeps as fn CA.Deps, CA.Pattern: CA.Deps =
         # TODO count a constructor dependency only when /instancing/ the constructor, not when matching it!
         CA.'patternConstructor _ usr ps:
             deps
-            >> Dict.insert usr 'constructorDependency __
+            >> Dict.insert __ usr 'constructorDependency
             >> List.for __ ps patternDeps
 
         CA.'patternRecord _ completeness ps:
-            Dict.for deps ps (fn k, v, a: patternDeps a v)
+            Dict.for deps ps (fn a, k, v: patternDeps a v)
 
         CA.'patternAny _ _ ('just annotation):
             typeDeps deps annotation.raw
@@ -129,13 +129,13 @@ expressionDeps as fn CA.Deps, CA.Expression: CA.Deps =
             deps
 
         CA.'variable _ ('refGlobal usr):
-            Dict.insert usr 'valueDependency deps
+            Dict.insert deps usr 'valueDependency
 
         CA.'variable _ _:
             deps
 
         CA.'constructor _ usr:
-            Dict.insert usr 'constructorDependency deps
+            Dict.insert deps usr 'constructorDependency
 
         CA.'fn _ pars body:
             deps
@@ -143,15 +143,15 @@ expressionDeps as fn CA.Deps, CA.Expression: CA.Deps =
             >> expressionDeps __ body
 
         CA.'record _ 'nothing exprByName:
-            Dict.for deps exprByName (fn name, v, a: expressionDeps a v)
+            Dict.for deps exprByName (fn a, name, v: expressionDeps a v)
 
         CA.'record _ ('just expr) exprByName:
             deps
             >> expressionDeps __ expr
-            >> Dict.for __ exprByName (fn name, v, a: expressionDeps a v)
+            >> Dict.for __ exprByName (fn a, name, v: expressionDeps a v)
 
         CA.'record _ _ exprByName:
-            Dict.for deps exprByName (fn name, v, a: expressionDeps a v)
+            Dict.for deps exprByName (fn a, name, v: expressionDeps a v)
 
         CA.'recordAccess _ _ e:
             expressionDeps deps e
@@ -192,7 +192,7 @@ expressionDeps as fn CA.Deps, CA.Expression: CA.Deps =
             # TODO should somehow use the fact that the type is open or not,
             # forcing the deps to have its innards if it is open?
 
-            Dict.insert usr dependencyType deps
+            Dict.insert deps usr dependencyType
 
 
 argumentDeps as fn CA.Deps, CA.Argument: CA.Deps =
@@ -328,7 +328,7 @@ translateMaybeAnnotation as fn Env, Maybe FA.Expression: Res (Maybe CA.Annotatio
             translateRawType env.ro faType
             >> onOk fn raw:
             tyvars =
-                CA.typeTyvars raw >> Dict.map (fn tyvarName, pos: { nonFn = Dict.get tyvarName env.nonFn }) __
+                CA.typeTyvars raw >> Dict.map __ (fn tyvarName, pos: { nonFn = Dict.get tyvarName env.nonFn })
 
             { raw, tyvars, univars = CA.typeUnivars raw }
             >> 'just
@@ -367,12 +367,12 @@ insertPatternRecordAttribute as fn Dict Name CA.Pattern, Env, FA.RecordAttribute
                 >> translateRawPattern env __
                 >> onOk fn caPattern:
                 caAttrs
-                >> Dict.insert caName caPattern __
+                >> Dict.insert __ caName caPattern
                 >> 'ok
 
             'nothing & 'nothing:
                 caAttrs
-                >> Dict.insert caName (CA.'patternAny pos ('just caName) 'nothing) __
+                >> Dict.insert __ caName (CA.'patternAny pos ('just caName) 'nothing)
                 >> 'ok
 
 
@@ -411,15 +411,15 @@ translateTuple as fn ReadOnly, (fn FA.Expression: Res ca), FA.BinopChain: Res (D
 
         [ ca1, ca2 ]:
             Dict.empty
-            >> Dict.insert "first" ca1 __
-            >> Dict.insert "second" ca2 __
+            >> Dict.insert __ "first" ca1
+            >> Dict.insert __ "second" ca2
             >> 'ok
 
         [ ca1, ca2, ca3 ]:
             Dict.empty
-            >> Dict.insert "first" ca1 __
-            >> Dict.insert "second" ca2 __
-            >> Dict.insert "third" ca3 __
+            >> Dict.insert __ "first" ca1
+            >> Dict.insert __ "second" ca2
+            >> Dict.insert __ "third" ca3
             >> 'ok
 
         _:
@@ -651,7 +651,7 @@ translateExpression as fn Env, FA.Expression: Res CA.Expression =
                 try par as
                     CA.'parameterPattern uni pa: insertPatternNames 'false pa envX
                     CA.'parameterRecycle p name: CA.'patternAny p ('just name) 'nothing >> insertPatternNames 'false __ envX
-                    CA.'parameterPlaceholder n: { envX with values = Dict.insert (Text.fromNumber n) { isRoot = 'false, pos } .values } >> 'ok
+                    CA.'parameterPlaceholder n: { envX with values = Dict.insert .values (Text.fromNumber n) { isRoot = 'false, pos } } >> 'ok
             >> onOk fn localEnv:
             faBody
             >> translateExpression localEnv __
@@ -896,7 +896,7 @@ insertPatternNames as fn Bool, CA.Pattern, Env: Res Env =
                                         umr /= env.ro.umr
 
                 if not shadowsAGlobal then
-                    Dict.insert paName.name { isRoot, pos = paName.pos } vs >> 'ok
+                    Dict.insert vs paName.name { isRoot, pos = paName.pos } >> 'ok
                 else
                     error
                         env
@@ -1056,7 +1056,7 @@ translateAndInsertRecordAttribute as fn Dict Text CA.Expression, Env, FA.RecordA
         >> translateExpression env __
         >> onOk fn caExpr:
         caAttrsAccum
-        >> Dict.insert caName caExpr __
+        >> Dict.insert __ caName caExpr
         >> 'ok
 
 
@@ -1187,8 +1187,8 @@ translateTupleExpression as fn Env, Pos, FA.BinopChain: Res CA.Expression =
             translateExpression env two
             >> onOk fn second:
             Dict.empty
-            >> Dict.insert "first" first __
-            >> Dict.insert "second" second __
+            >> Dict.insert __ "first" first
+            >> Dict.insert __ "second" second
             >> CA.'record pos 'nothing __
             >> 'ok
 
@@ -1200,9 +1200,9 @@ translateTupleExpression as fn Env, Pos, FA.BinopChain: Res CA.Expression =
             translateExpression env three
             >> onOk fn third:
             Dict.empty
-            >> Dict.insert "first" first __
-            >> Dict.insert "second" second __
-            >> Dict.insert "third" third __
+            >> Dict.insert __ "first" first
+            >> Dict.insert __ "second" second
+            >> Dict.insert __ "third" third
             >> CA.'record pos 'nothing __
             >> 'ok
 
@@ -1342,7 +1342,7 @@ translateAndInsertRecordAttributeType as fn Dict Name CA.RawType, ReadOnly, FA.R
                     erroro ro pos [ "I need a type here; `=` is for assignign values" ]
                 else
                     caAttrs
-                    >> Dict.insert name caType __
+                    >> Dict.insert __ name caType
                     >> 'ok
 
 
@@ -1547,7 +1547,7 @@ translateConstructor as fn CA.RawType, USR, Dict Name Pos, FA.Expression, Dict N
         , variantTypeUsr = varUsr
         }
 
-    Dict.insert name c constructors & newEnv >> 'ok
+    Dict.insert constructors name c & newEnv >> 'ok
 
 
 #
@@ -1566,7 +1566,7 @@ insertRootStatement as fn CA.Module & Env, FA.Statement: Res (CA.Module & Env) =
             >> translateRootDefinition env __
             >> onOk fn newEnv & def:
                 # TODO check against name duplication?
-                { caModule with valueDefs = Dict.insert def.name def .valueDefs } & newEnv >> 'ok
+                { caModule with valueDefs = Dict.insert .valueDefs def.name def } & newEnv >> 'ok
 
         FA.'aliasDef fa:
             pos & name =
@@ -1588,7 +1588,7 @@ insertRootStatement as fn CA.Module & Env, FA.Statement: Res (CA.Module & Env) =
                     , usr = 'USR env.ro.umr name
                     }
 
-                { caModule with aliasDefs = Dict.insert name aliasDef .aliasDefs } & env >> 'ok
+                { caModule with aliasDefs = Dict.insert .aliasDefs name aliasDef } & env >> 'ok
 
         FA.'unionDef fa:
             pos & name =
@@ -1622,7 +1622,7 @@ insertRootStatement as fn CA.Module & Env, FA.Statement: Res (CA.Module & Env) =
                 newModule =
                     { caModule with
                     , constructorDefs = Dict.for .constructorDefs constructors Dict.insert
-                    , variantTypeDefs = Dict.insert name varDef .variantTypeDefs
+                    , variantTypeDefs = Dict.insert .variantTypeDefs name varDef
                     }
 
                 newModule & newEnv >> 'ok

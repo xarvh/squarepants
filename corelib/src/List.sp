@@ -67,7 +67,7 @@ sortBy as fn (fn a: b), [ a ]: [ a ] with b NonFunction =
 
 indexBy as fn [ a ], (fn a: key): Dict key a with key NonFunction =
     fn list, getIndex:
-    for Dict.empty list (fn a, i: Dict.insert (getIndex i) i a)
+    for Dict.empty list (fn a, i: Dict.insert a (getIndex i) i)
 
 
 for as fn state, [ item ], (fn state, item: state): state =

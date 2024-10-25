@@ -19,7 +19,7 @@ isEmpty as fn Set a: Bool with a NonFunction =
 
 
 insert as fn a, Set a: Set a with a NonFunction =
-    Dict.insert __ 'none __
+    fn element, set: Dict.insert set element 'none
 
 
 remove as fn a, Set a: Set a with a NonFunction =
@@ -42,14 +42,14 @@ diff as fn Set a, Set a: Set a with a NonFunction =
     Dict.diff
 
 
-map as fn fn a: b, Set a: Set b with a NonFunction =
+map as fn (fn a: b), Set a: Set b with a NonFunction =
     fn f, set:
-    Dict.for empty set (fn k, _, d: Dict.insert (f k) 'none d)
+    Dict.for empty set (fn d, k, _: Dict.insert d (f k) 'none)
 
 
-for as fn a, Set b, fn b, a: a: a =
+for as fn a, Set b, (fn b, a: a): a =
     fn init, set, f:
-    Dict.for init set (fn k, _, d: f k d)
+    Dict.for init set (fn d, k, _: f k d)
 
 
 toList as fn Set a: [ a ] with a NonFunction =
@@ -57,4 +57,4 @@ toList as fn Set a: [ a ] with a NonFunction =
 
 
 fromList as fn [ a ]: Set a with a NonFunction =
-    List.for empty __ fn s, k: insert k s
+    List.for empty __ (fn s, k: insert k s)

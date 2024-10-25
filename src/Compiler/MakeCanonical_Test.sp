@@ -363,8 +363,8 @@ tuples as Test =
                          {
                          , raw =
                              Dict.empty
-                             >> Dict.insert "first" TH.caNumber __
-                             >> Dict.insert "second" TH.caNumber __
+                             >> Dict.insert __ "first" TH.caNumber
+                             >> Dict.insert __ "second" TH.caNumber
                              >> CA.'typeRecord p __
                          , tyvars = Dict.empty
                          , univars = Dict.empty

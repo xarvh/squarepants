@@ -106,7 +106,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ (fn d, usr & override: Dict.insert (EA.translateUsr usr) override d)
+    >> List.for Dict.empty __ (fn d, usr & override: Dict.insert d (EA.translateUsr usr) override)
 
 
 unaryPlus as Override =
@@ -550,7 +550,7 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
             obj =
                 Dict.empty
                 >> List.for __ attrNamesAndValues fn d, name & value:
-                    Dict.insert name (translateExpressionToExpression env 'true value) d
+                    Dict.insert d name (translateExpressionToExpression env 'true value)
                 >> JA.'record
 
             try maybeExtend as
@@ -640,7 +640,7 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
         {
         , overrides =
             List.for (coreOverrides 'none) platformOverrides fn d, usr & runtimeName:
-                Dict.insert (EA.translateUsr usr) (function runtimeName) d
+                Dict.insert d (EA.translateUsr usr) (function runtimeName)
         }
 
     jaStatements as [ JA.Statement ] =

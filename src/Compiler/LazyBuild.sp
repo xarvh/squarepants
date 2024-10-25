@@ -126,7 +126,7 @@ expandAndInsertType as fn @CollectDependenciesState, @Array Error, Compiler/Type
             try def as
 
                 'variantTypeDef variantTypeDef:
-                    { env0 with exactTypes = Dict.insert usr variantTypeDef.pars .exactTypes }
+                    { env0 with exactTypes = Dict.insert .exactTypes usr variantTypeDef.pars }
 
                 'aliasDef aliasDef:
                     { env0 with
@@ -255,7 +255,7 @@ build as fn BuildPlan: Res BuildOut =
             'just { with  deps }: deps
 
     nodesById as Dict USR USR =
-        Hash.for_ Dict.empty @state.done (fn usr, _, dict: Dict.insert usr usr dict)
+        Hash.for_ Dict.empty @state.done (fn usr, _, dict: Dict.insert dict usr usr)
 
     circulars & orderedUsrs =
         RefHierarchy.reorder nodeToEdges nodesById
@@ -386,7 +386,7 @@ build as fn BuildPlan: Res BuildOut =
     # Constructors
     #
     constructors as [ USR & TA.RawType ] =
-        Dict.toList (Dict.map (fn k, v: v.type.raw) envF.constructors)
+        Dict.toList (Dict.map envF.constructors (fn k, v: v.type.raw))
 
     #
     # Done!

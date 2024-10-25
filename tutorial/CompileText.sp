@@ -110,7 +110,7 @@ exports as Meta.Exports =
             >> Maybe.withDefault Dict.empty __
 
         # TODO isOpen = ?
-        Dict.insert modulePath (Dict.insert name { isOpen = 'false, usr = self.usr } module) exp
+        Dict.insert exp modulePath (Dict.insert module name { isOpen = 'false, usr = self.usr })
 
 
 textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
@@ -199,7 +199,7 @@ main as fn Text: Result (Html msg) CompiledCode =
     textToCaModule defaultImports entryUmr modulePath code
     >> onResSuccess fn caModule:
     modulesByUmr =
-        Self.toCaModules exposedNames >> Dict.insert entryUmr caModule __
+        Self.toCaModules exposedNames >> Dict.insert __ entryUmr caModule
 
     {
     , loadCaModule = loadCaModule modulesByUmr
