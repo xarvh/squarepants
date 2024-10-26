@@ -60,10 +60,6 @@ sourceDir =
        importAs = CA
 
     module =
-       path = Types/EmittableAst
-       importAs = EA
-
-    module =
        path = Types/FormattableAst
        importAs = FA
 
@@ -110,6 +106,9 @@ sourceDir =
     module =
         path = Compiler/Error
         importAs = Error
+        globals =
+            Error
+            Res
 
 
 #

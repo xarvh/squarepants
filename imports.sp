@@ -152,6 +152,8 @@ library =
     module =
        path = Compiler/Error
        importAs = Error
+       globals =
+          Res
 
     module =
        path = Compiler/Parser

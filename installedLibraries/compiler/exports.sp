@@ -153,42 +153,6 @@ module =
         patternNames
         expressionPos
 
-module =
-   path = Types/EmittableAst
-   exposes =
-        Expression
-        'literalText
-        'literalNumber
-        'localVariable
-        'globalVariable
-        'placeholderVariable
-        'call
-        'fn
-        'conditional
-        'and
-        'isLiteralText
-        'isLiteralNumber
-        'letIn
-        'constructor
-        'constructorAccess
-        'isConstructor
-        'literalRecord
-        'recordAccess
-        'missingPattern
-        'introspect
-        Argument
-        'argumentRecycle
-        'argumentSpend
-        GlobalDefinition
-        #
-        TranslatedUsr
-        TranslationState
-        initTranslationState
-        translateRoot
-        translateUmr
-        translateUsr
-        translateName
-
 
 module =
    path = Types/FormattableAst
@@ -403,6 +367,34 @@ module =
         pathId
         importsDir
         sourceDir
+        importsPath
+
+        unaryPlus
+        unaryMinus
+        add
+        multiply
+        subtract
+        mutableAssign
+        mutableAdd
+        mutableSubtract
+        textConcat
+        greaterThan
+        lesserThan
+        greaterOrEqualThan
+        lesserOrEqualThan
+        or_
+        and_
+        trueUsr
+        falseUsr
+        noneConsUsr
+        divide
+        listCons
+        nilName
+        consName
+        equal
+        notEqual
+
+
 
 module =
     path = Compiler/MakeCanonical
