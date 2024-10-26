@@ -24,18 +24,6 @@ sourceDir =
             usrToText
 
     module =
-       path = Compiler/Error
-       importAs = Error
-       globals =
-          Error
-          Res
-
-    module =
-       path = Compiler/CoreDefs
-       importAs = CoreDefs
-
-
-    module =
        path = SPLib/Format
        importAs = Fmt
 
@@ -54,10 +42,6 @@ sourceDir =
     module =
        path = Targets/Javascript/Ast
        importAs = JA
-
-    module =
-       path = Compiler/TestHelpers
-       importAs = TH
 
     module =
        path = Platform
@@ -89,6 +73,10 @@ library =
 
 library =
     source = "core"
+
+    module =
+       path = Compiler/EmittableAst
+       importAs = EA
 
     # unlike sourceDirs, libraries don't automatically expose all available modules
     module =
@@ -180,8 +168,12 @@ library =
     module =
         path = Self
 
+
+library =
+    source = ":compiler"
+
     module =
-       path = Compiler/Ast
+       path = Types/Ast
        importAs = Ast
        globals =
           Name
@@ -198,23 +190,19 @@ library =
           toUni
 
     module =
-       path = Compiler/TypedAst
+       path = Types/TypedAst
        importAs = TA
 
     module =
-       path = Compiler/CanonicalAst
+       path = Types/CanonicalAst
        importAs = CA
 
     module =
-       path = Compiler/EmittableAst
-       importAs = EA
-
-    module =
-       path = Compiler/FormattableAst
+       path = Types/FormattableAst
        importAs = FA
 
     module =
-        path = Compiler/Meta
+        path = Types/Meta
         importAs = Meta
         globals =
             Imports
@@ -231,11 +219,11 @@ library =
             'typeDependency
 
     module =
-        path = Compiler/Op
+        path = Types/Op
         importAs = Op
 
     module =
-       path = Compiler/Pos
+       path = Types/Pos
        importAs = Pos
        globals =
             Pos
@@ -243,9 +231,26 @@ library =
             'at
 
     module =
-        path = Compiler/Token
+        path = Types/Token
         importAs = Token
         globals =
             Token
             'token
+
+    module =
+       path = Compiler/LazyBuild
+
+    module =
+       path = Compiler/Error
+       importAs = Error
+
+    module =
+       path = Compiler/Parser
+
+    module =
+       path = Compiler/CoreDefs
+       importAs = CoreDefs
+
+    module =
+       path = Compiler/MakeCanonical
 
