@@ -1,4 +1,34 @@
 #
+# Libraries
+#
+library =
+    source = ":test"
+    module =
+       path = Test
+       importAs = Test
+       globals = Test
+
+
+library =
+    source = ":dependencyResolution"
+    module =
+       path = RefHierarchy
+
+
+library =
+    source = ":format"
+    module =
+       path = Format
+       importAs = Fmt
+
+
+library =
+    source = ":parser"
+    module =
+       path = Parser
+
+
+#
 # Source
 #
 sourceDir =
@@ -80,23 +110,6 @@ sourceDir =
     module =
         path = Compiler/Error
         importAs = Error
-
-
-#
-# Libraries
-#
-library =
-    source = ":test"
-    module =
-       path = Test
-       importAs = Test
-       globals = Test
-
-
-library =
-    source = ":dependencyResolution"
-    module =
-       path = RefHierarchy
 
 
 #

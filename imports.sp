@@ -1,5 +1,19 @@
 [# imports.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
 
+#
+# Platform
+#
+library =
+    platform = posix
+    source = ":posix"
+
+    module =
+       path = IO
+       globals = IO
+
+    module =
+       path = Path
+
 
 sourceDir =
     path = "specs"
@@ -24,18 +38,6 @@ sourceDir =
             usrToText
 
     module =
-       path = SPLib/Format
-       importAs = Fmt
-
-    module =
-       path = SPLib/Parser
-       importAs = Parser
-
-    module =
-       path = SPLib/RefHierarchy
-       importAs = RefHierarchy
-
-    module =
        path = SPLib/SPON
        importAs = SPON
 
@@ -50,19 +52,9 @@ sourceDir =
           Platform
 
 
-# This will be transformed into a platform
-library =
-    platform = posix
-    source = ":posix"
-
-    module =
-       path = IO
-       globals = IO
-
-    module =
-       path = Path
-
-
+#
+# Libraries
+#
 library =
     source = ":test"
     module =
@@ -71,6 +63,115 @@ library =
        globals = Test
 
 
+library =
+    source = ":dependencyResolution"
+
+    module =
+       path = SPLib/RefHierarchy
+       importAs = RefHierarchy
+
+
+library =
+    source = ":format"
+    module =
+       path = Format
+       importAs = Fmt
+
+
+library =
+    source = ":compiler"
+
+    module =
+       path = Types/Ast
+       importAs = Ast
+       globals =
+          Name
+          Ref
+          UnivarId
+          Uniqueness
+          'refLocal
+          'refGlobal
+          'refPlaceholder
+          'uni
+          'imm
+          'depends
+          toImm
+          toUni
+
+    module =
+       path = Types/TypedAst
+       importAs = TA
+
+    module =
+       path = Types/CanonicalAst
+       importAs = CA
+
+    module =
+       path = Types/FormattableAst
+       importAs = FA
+
+    module =
+        path = Types/Meta
+        importAs = Meta
+        globals =
+            Imports
+            Exports
+            ByUsr
+            USR
+            UMR
+            Source
+            DependencyType
+            'USR
+            'UMR
+            'valueDependency
+            'constructorDependency
+            'typeDependency
+
+    module =
+        path = Types/Op
+        importAs = Op
+
+    module =
+       path = Types/Pos
+       importAs = Pos
+       globals =
+            Pos
+            At
+            'at
+
+    module =
+        path = Types/Token
+        importAs = Token
+        globals =
+            Token
+            'token
+
+    module =
+       path = Compiler/LazyBuild
+
+    module =
+       path = Compiler/Error
+       importAs = Error
+
+    module =
+       path = Compiler/Parser
+
+    module =
+       path = Compiler/CoreDefs
+       importAs = CoreDefs
+
+    module =
+       path = Compiler/MakeCanonical
+
+    module =
+       path = Human/Format
+
+
+
+
+#
+# Core
+#
 library =
     source = "core"
 
@@ -167,93 +268,3 @@ library =
 
     module =
         path = Self
-
-
-library =
-    source = ":compiler"
-
-    module =
-       path = Types/Ast
-       importAs = Ast
-       globals =
-          Name
-          Ref
-          UnivarId
-          Uniqueness
-          'refLocal
-          'refGlobal
-          'refPlaceholder
-          'uni
-          'imm
-          'depends
-          toImm
-          toUni
-
-    module =
-       path = Types/TypedAst
-       importAs = TA
-
-    module =
-       path = Types/CanonicalAst
-       importAs = CA
-
-    module =
-       path = Types/FormattableAst
-       importAs = FA
-
-    module =
-        path = Types/Meta
-        importAs = Meta
-        globals =
-            Imports
-            Exports
-            ByUsr
-            USR
-            UMR
-            Source
-            DependencyType
-            'USR
-            'UMR
-            'valueDependency
-            'constructorDependency
-            'typeDependency
-
-    module =
-        path = Types/Op
-        importAs = Op
-
-    module =
-       path = Types/Pos
-       importAs = Pos
-       globals =
-            Pos
-            At
-            'at
-
-    module =
-        path = Types/Token
-        importAs = Token
-        globals =
-            Token
-            'token
-
-    module =
-       path = Compiler/LazyBuild
-
-    module =
-       path = Compiler/Error
-       importAs = Error
-
-    module =
-       path = Compiler/Parser
-
-    module =
-       path = Compiler/CoreDefs
-       importAs = CoreDefs
-
-    module =
-       path = Compiler/MakeCanonical
-
-    module =
-       path = Human/Format
-
