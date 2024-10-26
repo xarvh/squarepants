@@ -2,7 +2,7 @@
 # Native functions
 #
 
-forEach as fn Text, fn Text: None: None =
+forEach as fn Text, (fn Text: None): None =
     this_is_sp_native
 
 
