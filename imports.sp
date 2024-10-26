@@ -254,3 +254,6 @@ library =
     module =
        path = Compiler/MakeCanonical
 
+    module =
+       path = Human/Format
+
