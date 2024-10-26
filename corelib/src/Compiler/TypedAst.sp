@@ -145,7 +145,7 @@ SubsAsFns =
     }
 
 
-resolveUni as fn fn UnivarId: Maybe Uniqueness, Uniqueness: Uniqueness =
+resolveUni as fn (fn UnivarId: Maybe Uniqueness), Uniqueness: Uniqueness =
     fn uniSub, uni:
     try uni as
 
@@ -186,14 +186,14 @@ resolveRaw as fn SubsAsFns, RawType: RawType =
                 'just replacement: replacement
 
         'typeExact p usr pars:
-            'typeExact p usr (List.map rec pars)
+            'typeExact p usr (List.map pars rec)
 
         'typeFn p pars out:
-            'typeFn p (List.map (resolveParType saf __) pars) (resolveFull saf out)
+            'typeFn p (List.map pars (resolveParType saf __)) (resolveFull saf out)
 
         'typeRecord p maybeId attrs0:
             attrs1 =
-                Dict.map (fn k, v: rec v) attrs0
+                Dict.map attrs0 rec
 
             try maybeId as
 
@@ -255,13 +255,13 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             expression
 
         'fn p pars body bodyType:
-            'fn p (List.map (resolvePar saf __) pars) (rec body) (resolveFull saf bodyType)
+            'fn p (List.map pars (resolvePar saf __)) (rec body) (resolveFull saf bodyType)
 
         'call p ref args:
-            'call p (rec ref) (List.map (resolveArg saf __) args)
+            'call p (rec ref) (List.map args (resolveArg saf __))
 
         'record p maybeExt attrs:
-            'record p (Maybe.map rec maybeExt) (Dict.map (fn k, v: rec v) attrs)
+            'record p (Maybe.map maybeExt rec) (Dict.map attrs rec)
 
         'recordAccess p name exp:
             'recordAccess p name (rec exp)
@@ -276,7 +276,7 @@ resolveExpression as fn SubsAsFns, Expression: Expression =
             'try
                 p
                 {
-                , patternsAndExpressions = List.map (Tuple.mapBoth (resolvePattern saf __) rec __) patternsAndExpressions
+                , patternsAndExpressions = List.map patternsAndExpressions (Tuple.mapBoth (resolvePattern saf __) rec __)
                 , value = rec value
                 , valueType = resolveFull saf valueType
                 }
@@ -297,14 +297,14 @@ resolvePattern as fn SubsAsFns, Pattern: Pattern =
         'patternLiteralNumber pos _: pattern
         'patternLiteralText pos _: pattern
         'patternAny pos stuff: 'patternAny pos { stuff with type = resolveFull saf .type }
-        'patternConstructor pos usr ps: 'patternConstructor pos usr (List.map (resolvePattern saf __) ps)
-        'patternRecord pos ps: 'patternRecord pos (Dict.map (fn k, p & t: resolvePattern saf p & resolveRaw saf t) ps)
+        'patternConstructor pos usr ps: 'patternConstructor pos usr (List.map ps (resolvePattern saf __))
+        'patternRecord pos ps: 'patternRecord pos (Dict.map ps (fn p & t: resolvePattern saf p & resolveRaw saf t))
 
 
 resolveValueDef as fn SubsAsFns, ValueDef: ValueDef =
     fn saf, def:
     { def with
-    , body = Maybe.map (resolveExpression saf __) .body
+    , body = Maybe.map .body (resolveExpression saf __)
     , pattern = resolvePattern saf .pattern
     , type = resolveFull saf .type
     }
@@ -322,15 +322,12 @@ toRaw as fn ParType: RawType =
         'parSp full: full.raw
 
 
-mapPars as fn fn RawType: RawType, [ ParType ]: [ ParType ] =
+mapPars as fn (fn RawType: RawType), [ ParType ]: [ ParType ] =
     fn f, pars:
-    zzz =
-        fn par:
+    List.map pars fn par:
         try par as
             'parRe raw: 'parRe (f raw)
             'parSp full: 'parSp { full with raw = f .raw }
-
-    List.map zzz pars
 
 
 patternPos as fn Pattern: Pos =
@@ -350,27 +347,27 @@ patternNames as fn Pattern: Dict Name { pos as Pos, type as FullType } =
         'patternAny pos { maybeName = 'just n, type }: Dict.ofOne n { pos, type }
         'patternLiteralNumber pos _: Dict.empty
         'patternLiteralText pos _: Dict.empty
-        'patternConstructor pos usr ps: List.for Dict.empty ps (fn x, a: x >> patternNames >> Dict.join __ a)
-        'patternRecord pos ps: Dict.for Dict.empty ps (fn k, pa & ty, a: pa >> patternNames >> Dict.join a __)
+        'patternConstructor pos usr ps: List.for Dict.empty ps (fn a, x: x >> patternNames >> Dict.join __ a)
+        'patternRecord pos ps: Dict.for Dict.empty ps (fn a, k, pa & ty: pa >> patternNames >> Dict.join a __)
 
 
 typeTyvars as fn RawType: Dict TyvarId None =
     fn type:
     try type as
-        'typeExact _ usr args: List.for Dict.empty args (fn a, acc: Dict.join (typeTyvars a) acc)
+        'typeExact _ usr args: List.for Dict.empty args (fn acc, a: Dict.join (typeTyvars a) acc)
         'typeVar _ id: Dict.ofOne id 'none
-        'typeRecord _ 'nothing attrs: Dict.for Dict.empty attrs (fn k, a, d: Dict.join (typeTyvars a) d)
-        'typeRecord _ ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn k, a, d: Dict.join (typeTyvars a) d)
-        'typeFn _ ins out: typeTyvars out.raw >> List.for __ ins (fn in, a: Dict.join (in >> toRaw >> typeTyvars) a)
+        'typeRecord _ 'nothing attrs: Dict.for Dict.empty attrs (fn d, k, a: Dict.join (typeTyvars a) d)
+        'typeRecord _ ('just id) attrs: Dict.ofOne id 'none >> Dict.for __ attrs (fn d, k, a: Dict.join (typeTyvars a) d)
+        'typeFn _ ins out: typeTyvars out.raw >> List.for __ ins (fn a, in: Dict.join (in >> toRaw >> typeTyvars) a)
         'typeError: Dict.empty
 
 
-typeAllowsFunctions as fn fn TyvarId: Bool, RawType: Bool =
+typeAllowsFunctions as fn (fn TyvarId: Bool), RawType: Bool =
     fn testId, type:
     try type as
         'typeFn _ ins out: 'true
         'typeVar _ id: testId id
-        'typeExact _ usr args: List.any (typeAllowsFunctions testId __) args
+        'typeExact _ usr args: List.any args (typeAllowsFunctions testId __)
         'typeRecord _ _ attrs: Dict.any (fn k, v: typeAllowsFunctions testId v) attrs
         'typeError: 'true
 
@@ -403,10 +400,10 @@ normalizeTyvarId as fn @Hash TyvarId TyvarId, TyvarId: TyvarId =
 normalizeType as fn @Hash TyvarId TyvarId, RawType: RawType =
     fn @hash, type:
     try type as
-        'typeExact p usr args: 'typeExact p usr (List.map (normalizeType @hash __) args)
+        'typeExact p usr args: 'typeExact p usr (List.map args (normalizeType @hash __))
         'typeFn p pars out: 'typeFn p (mapPars (normalizeType @hash __) pars) { out with raw = normalizeType @hash .raw }
-        'typeRecord p 'nothing attrs: 'typeRecord p 'nothing (Dict.map (fn k, v: normalizeType @hash v) attrs)
-        'typeRecord p ('just id) attrs: 'typeRecord p ('just << normalizeTyvarId @hash id) (Dict.map (fn k, v: normalizeType @hash v) attrs)
+        'typeRecord p 'nothing attrs: 'typeRecord p 'nothing (Dict.map attrs (normalizeType @hash __))
+        'typeRecord p ('just id) attrs: 'typeRecord p ('just << normalizeTyvarId @hash id) (Dict.map attrs (normalizeType @hash __))
         'typeVar p id: 'typeVar p (normalizeTyvarId @hash id)
         'typeError: 'typeError
 
@@ -421,7 +418,7 @@ stripTypePos as fn RawType: RawType =
 
     try raw as
         'typeVar _ id: 'typeVar pos id
-        'typeExact _ usr pars: 'typeExact pos usr (List.map rec pars)
+        'typeExact _ usr pars: 'typeExact pos usr (List.map pars rec)
         'typeFn _ pars out: 'typeFn pos (mapPars rec pars) { out with raw = rec .raw }
-        'typeRecord _ maybeId attrs0: 'typeRecord pos maybeId (Dict.map (fn k, v: rec v) attrs0)
+        'typeRecord _ maybeId attrs0: 'typeRecord pos maybeId (Dict.map attrs0 rec)
         'typeError: 'typeError

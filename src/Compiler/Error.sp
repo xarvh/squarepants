@@ -31,11 +31,11 @@ var FormattedText =
 
 
 toFormattedText as fn Error: [ FormattedText ] =
-    flatten __ []
+    flatten [] __
 
 
-flatten as fn Error, [ FormattedText ]: [ FormattedText ] =
-    fn e, accum:
+flatten as fn [ FormattedText ], Error: [ FormattedText ] =
+    fn accum, e:
     try e as
         'simple mod pos desc: List.concat [ accum, simpleToText mod pos desc ]
         'raw desc: List.concat [ accum, rawToText desc ]
@@ -47,7 +47,7 @@ count as fn Error: Int =
     try e as
         'simple mod pos desc: 1
         'raw desc: 1
-        'nested ls: List.for 0 ls fn err, total: total + count err
+        'nested ls: List.for 0 ls fn total, err: total + count err
 
 
 #
@@ -81,7 +81,7 @@ breakDownText as fn Text: [ FormattedText ] =
 
     text
     >> Text.split formatSeparator __
-    >> List.indexedMap formatSnippet __
+    >> List.mapWithIndex __ formatSnippet
 
 
 emph as fn Text: Text =
@@ -123,20 +123,18 @@ positionToLineAndColumn as fn Text, Int: { col as Int, line as Int } =
     colNumber =
         lines
         >> List.last
-        >> Maybe.map Text.length __
-        >> Maybe.withDefault 0 __
+        >> Maybe.map __ Text.length
+        >> Maybe.withDefault __ 0
 
     { col = colNumber, line = lineNumber }
 
 
-highlightSplit as fn Highlight, Dict Int (Int & Int) & Set Int: Dict Int (Int & Int) & Set Int =
-    fn h, x:
-    words & lines =
-        x
+highlightSplit as fn Dict Int (Int & Int) & Set Int, Highlight: Dict Int (Int & Int) & Set Int =
+    fn words & lines, h:
 
     try h as
-        'highlightWord { colEnd, colStart, line }: Dict.insert line (colStart & colEnd) words & lines
-        'highlightBlock { lineEnd, lineStart }: words & List.for lines (List.range lineStart lineEnd) Set.insert
+        'highlightWord { colEnd, colStart, line }: Dict.insert words line (colStart & colEnd) & lines
+        'highlightBlock { lineEnd, lineStart }: words & List.for lines (List.range lineStart lineEnd) (fn a, b: Set.insert b a)
 
 
 fmtBlock as fn Int, [ Highlight ], [ Text ]: Text =
@@ -186,7 +184,7 @@ fmtBlock as fn Int, [ Highlight ], [ Text ]: Text =
         .. wordHighlight index
 
     ls
-    >> List.indexedMap fmtLine __
+    >> List.mapWithIndex __ fmtLine
     >> Text.join "\n" __
     >> (fn s: s .. "\n")
 
@@ -287,8 +285,8 @@ simpleToText as fn Module, Pos, [ Text ]: [ FormattedText ] =
 
     description =
         [ block, desc... ]
-        >> List.concatMap (Text.split "\n" __) __
-        >> List.map (fn s: "  " .. s) __
+        >> List.mapConcat __ (Text.split "\n" __)
+        >> List.map __ (fn s: "  " .. s)
         >> Text.join "\n" __
 
     [
@@ -307,8 +305,8 @@ rawToText as fn [ Text ]: [ FormattedText ] =
     fn desc:
     description =
         desc
-        >> List.concatMap (Text.split "\n" __) __
-        >> List.map (fn s: "  " .. s) __
+        >> List.mapConcat __ (Text.split "\n" __)
+        >> List.map __ (fn s: "  " .. s)
         >> Text.join "\n" __
 
     [

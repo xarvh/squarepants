@@ -46,13 +46,13 @@ map as fn fn a: b, VirtualNode a: VirtualNode b =
     fn f, n:
     try n as
         'textNode t: 'textNode t
-        'elementNode name attrs children: 'elementNode name (List.map (mapAttr f __) attrs) (List.map (map f __) children)
+        'elementNode name attrs children: 'elementNode name (List.map attrs (mapAttr f __)) (List.map children (map f __))
 
 
 mapAttr as fn (fn a: b), Attr a: Attr b =
     fn f, a:
     try a as
-        'listener n handler: 'listener n (fn ev: Result.map f (handler ev))
+        'listener n handler: 'listener n (fn ev: Result.map (handler ev) f)
         'cssClass b: 'cssClass b
         'cssStyle b c: 'cssStyle b c
         'domAttribute c b: 'domAttribute c b

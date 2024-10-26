@@ -56,12 +56,7 @@ indent_spaces as fn Int: Indent =
 
 
 indent_width as fn Indent: Int =
-    List.for 0 __ indent_combine
-
-
-indent_combine as fn Int, Int: Int =
-    fn pos, i:
-    pos + i
+    List.for 0 __ (__ + __)
 
 
 # TODO: Squarepants does not have a strategy to deal with Tabs vs Spaces, it just rejects them.
@@ -207,7 +202,7 @@ mkIndentedLine as fn Line: Indented Line =
 # | A vertical stack of @Block@s.  The left edges of all the @Block@s will be aligned.
 stack as fn [ Block ]: Block =
     stackForce as fn Block, Block: Block =
-        fn b1, b2:
+        fn b2, b1:
         toLines as fn Block: [ Indented Line ] =
             fn b:
             try b as
@@ -245,7 +240,7 @@ mapFirstLine as fn fn Indented Line: Indented Line, fn Indented Line: Indented L
     try b as
         'empty: 'empty
         'singleLine breaks l1: 'singleLine breaks (firstFn l1)
-        'stack l1 ls: 'stack (firstFn l1) (List.map restFn ls)
+        'stack l1 ls: 'stack (firstFn l1) (List.map ls restFn)
 
 
 mapLastLine as fn fn Indented Line: Indented Line, Block: Block =
@@ -292,8 +287,8 @@ rowOrStackForce as fn Bool, Maybe Line, [ Block ]: Block =
 
                     'just (lines & mkLine):
                         try joiner as
-                            'nothing: for1 lines 'row
-                            'just j: for1 (List.intersperse j lines) 'row
+                            'nothing: for1 lines (fn a, b: 'row b a)
+                            'just j: for1 (List.intersperse j lines) (fn a, b: 'row b a)
                         >> mkLine
 
                     _:
@@ -322,16 +317,16 @@ rowOrIndentForce as fn Bool, Maybe Line, [ Block ]: Block =
 
                 'just (reversedLines & mkLine):
                     if forceMultiline then
-                        stack (b1 :: List.map indent rest)
+                        stack (b1 :: List.map rest indent)
                     else
                         # TODO this seems to be repeated above.
                         try joiner as
-                            'nothing: for1 reversedLines 'row
-                            'just j: for1 (List.intersperse j reversedLines) 'row
+                            'nothing: for1 reversedLines (fn a, b: 'row b a)
+                            'just j: for1 (List.intersperse j reversedLines) (fn a, b: 'row b a)
                         >> mkLine
 
                 _:
-                    stack (b1 :: List.map indent rest)
+                    stack (b1 :: List.map rest indent)
 
 
 # TODO this outputs the lines in reverse order, it shouldn't!
@@ -476,5 +471,5 @@ render as fn Block: Text =
 
         'stack l1 rest:
             [ l1, rest... ]
-            >> List.map renderIndentedLine __
+            >> List.map __ renderIndentedLine
             >> Text.join "" __

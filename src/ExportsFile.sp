@@ -49,7 +49,7 @@ toExports as fn Imports, ExportsFile: Res Exports =
         addError =
             __ >> Error.'raw >> addError_
 
-        Dict.for Dict.empty exportsFile fn modulePath, exposedNames, d:
+        Dict.for Dict.empty exportsFile fn d, modulePath, exposedNames:
             try Dict.get modulePath imports.modulePathToLocation as
 
                 'nothing:
@@ -72,14 +72,14 @@ toExports as fn Imports, ExportsFile: Res Exports =
                     d
 
                 'just (Meta.'locationSourceDir umr):
-                    Dict.for d exposedNames fn name, isOpen, dd:
+                    Dict.for d exposedNames fn dd, name, isOpen:
                         usr =
                             'USR umr name
 
                         addNameToModule as fn Maybe (Dict Name Meta.ExportOptions): Maybe (Dict Name Meta.ExportOptions) =
                             __
-                            >> Maybe.withDefault Dict.empty __
-                            >> Dict.insert name { isOpen, usr } __
+                            >> Maybe.withDefault __ Dict.empty
+                            >> Dict.insert __ name { isOpen, usr }
                             >> 'just
 
                         Dict.update modulePath addNameToModule dd
@@ -101,15 +101,15 @@ moduleReader as SPON.Reader { exposes as Dict Name Bool, path as Text } =
     >> SPON.onAcc fn path:
     SPON.maybe (SPON.field "exposes" (SPON.many exposesReader))
     >> SPON.onAcc fn maybeExposes:
-    SPON.return { exposes = List.for Dict.empty (Maybe.withDefault [] maybeExposes) (fn e, d: Dict.insert e.name e.open d), path }
+    SPON.return { exposes = List.for Dict.empty (Maybe.withDefault maybeExposes []) (fn d, e: Dict.insert d e.name e.open), path }
 
 
 exportsFileReader as SPON.Reader ExportsFile =
     SPON.field "module" moduleReader
     >> SPON.many
     >> SPON.onAcc fn modules:
-    List.for Dict.empty modules fn module, d:
-        Dict.insert module.path module.exposes d
+    List.for Dict.empty modules fn d, module:
+        Dict.insert d module.path module.exposes
     >> SPON.return
 
 

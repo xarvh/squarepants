@@ -35,7 +35,7 @@ resToConsoleText as fn Res a: Result (Html msg) a =
         'err e:
             e
             >> Error.toFormattedText
-            >> List.map formattedToConsoleColoredText __
+            >> List.map __ formattedToConsoleColoredText
             >> Html.div [] __
             >> 'err
 
@@ -67,7 +67,7 @@ defaultImports as Imports =
             errAsText =
                 err
                 >> Error.toFormattedText
-                >> List.map toHuman __
+                >> List.map __ toHuman
                 >> Text.join "" __
 
             Debug.log errAsText "--"
@@ -101,7 +101,7 @@ exposedNames as [ Self.Self ] =
 
 
 exports as Meta.Exports =
-    List.for Dict.empty exposedNames fn self, exp:
+    List.for Dict.empty exposedNames fn exp, self:
 
         'USR ('UMR importsPath sourceDir modulePath) name = self.usr
 
@@ -110,7 +110,7 @@ exports as Meta.Exports =
             >> Maybe.withDefault Dict.empty __
 
         # TODO isOpen = ?
-        Dict.insert modulePath (Dict.insert name { isOpen = 'false, usr = self.usr } module) exp
+        Dict.insert exp modulePath (Dict.insert module name { isOpen = 'false, usr = self.usr })
 
 
 textToCaModule as fn Imports, UMR, Text, Text: Res CA.Module =
@@ -199,7 +199,7 @@ main as fn Text: Result (Html msg) CompiledCode =
     textToCaModule defaultImports entryUmr modulePath code
     >> onResSuccess fn caModule:
     modulesByUmr =
-        Self.toCaModules exposedNames >> Dict.insert entryUmr caModule __
+        Self.toCaModules exposedNames >> Dict.insert __ entryUmr caModule
 
     {
     , loadCaModule = loadCaModule modulesByUmr
@@ -212,9 +212,9 @@ main as fn Text: Result (Html msg) CompiledCode =
     entryTUsr =
       EA.translateUsr entryUsr
 
-    try List.find (fn v: v.usr == entryTUsr) rootValues as
+    try List.find rootValues (fn v: v.usr == entryTUsr) as
         'nothing:
-            log "" (List.map (fn s: s.usr) rootValues)
+            log "" (List.map rootValues (fn s: s.usr))
             'err (Html.text "internal bug: cannot find entryUsr!?")
         'just t: 'ok t
     >> onOk fn entryValue:

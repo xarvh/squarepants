@@ -420,7 +420,7 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 >> on fn exps:
                 inlineOrBelowOrIndented closeBracket
                 >> on fn closeRow:
-                FA.'list (closeRow > openRow) (Maybe.withDefault [] exps) >> expressionOk
+                FA.'list (closeRow > openRow) (Maybe.withDefault exps []) >> expressionOk
 
             Token.'curlyBrace openRow Token.'open:
                 extension as Parser (Maybe FA.Expression) =
@@ -449,7 +449,7 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 inlineOrBelowOrIndented closeBrace
                 >> on fn closeRow:
                 {
-                , attrs = Maybe.withDefault [] attrs
+                , attrs = Maybe.withDefault attrs []
                 , isMultiline = closeRow > openRow
                 , maybeExtension
                 }
@@ -552,7 +552,7 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                 ok expression
             else
                 [ FA.'evaluation expression ]
-                #:: List.map FA.CommentStatement commentsReversed
+                #:: List.map commentsReversed FA.CommentStatement
                 #>> List.reverse
                 >> FA.'statements
                 >> FA.'expression (List.reverse commentsReversed) (pos env start end) __
@@ -609,7 +609,7 @@ functionApplication as fn Env: Parser FA.Expression =
     >> Parser.maybe
     >> on fn indentedArgs:
     args =
-        List.concat [ inlineArgs, Maybe.withDefault [] indentedArgs ]
+        List.concat [ inlineArgs, Maybe.withDefault indentedArgs [] ]
 
     if args == [] then
         # No application
@@ -716,7 +716,7 @@ chain_append as fn FA.Binop & FA.Expression, FA.BinopChain: FA.BinopChain =
 blah as fn Int, FA.BinopChain, FA.BinopChain, FA.Binop: FA.Expression =
     fn lowestPrecedence, remainingChain, accChain, accOp:
     abovePrecedence & rest =
-        List.partitionWhile (fn op & exp: op.precedence > lowestPrecedence) remainingChain.second
+        List.partitionWhile remainingChain.second (fn op & exp: op.precedence > lowestPrecedence)
 
     ee =
         reorderAccordingToBinopPrecedence (remainingChain.first & abovePrecedence)
@@ -728,7 +728,7 @@ blah as fn Int, FA.BinopChain, FA.BinopChain, FA.Binop: FA.Expression =
 
         []:
             p =
-                updatedChain.first :: List.map (fn x: x.second) updatedChain.second >> posRange
+                updatedChain.first :: List.map updatedChain.second (fn x: x.second) >> posRange
 
             updatedChain
             >> FA.'binopChain lowestPrecedence __
@@ -749,7 +749,7 @@ reorderAccordingToBinopPrecedence as fn FA.BinopChain: FA.Expression =
 
         lowestPrecedence:
             abovePrecedence & rest =
-                List.partitionWhile (fn op & exp: op.precedence > lowestPrecedence) chain.second
+                List.partitionWhile chain.second (fn op & exp: op.precedence > lowestPrecedence)
 
             # This is going to be the "left" part of our final chain
             left =
@@ -779,7 +779,7 @@ posRange as fn [ FA.Expression ]: Pos =
 
 stackCommentsReversedAsStatements as fn [ FA.Comment ], [ FA.Statement ]: [ FA.Statement ] =
     fn comments, acc:
-    List.forReversed acc comments fn comment, accN:
+    List.forReversed acc comments fn accN, comment:
         FA.'commentStatement comment :: accN
 
 
@@ -825,7 +825,7 @@ definitionOrEvaluation as fn Env: Parser FA.Statement =
         'just (maybeNf & body):
             {
             , body
-            , nonFn = Maybe.withDefault [] maybeNf
+            , nonFn = Maybe.withDefault maybeNf []
             , pattern = ex
             }
             >> FA.'valueDef
@@ -904,7 +904,7 @@ parse as fn Env, [ Token ], [ FA.Statement ]: Res [ FA.Statement ] =
 
         Parser.'rejected:
             findMin =
-                fn { with  tokens }, best:
+                fn best, { with  tokens }:
                 if List.length tokens < List.length best then tokens else best
 
             farthestParsed as [ Token ] =
@@ -917,7 +917,7 @@ parse as fn Env, [ Token ], [ FA.Statement ]: Res [ FA.Statement ] =
 
                 [] & [ 'token start end0 _, rest... ]:
                     end =
-                        List.for end0 rest (fn 'token _ endX _, _: endX)
+                        List.for end0 rest (fn _, 'token _ endX _: endX)
 
                     Error.res env.errorModule (Pos.'p start end) [ "I got to the end of the statement and I can't make sense of it. =(" ]
 
@@ -935,7 +935,7 @@ textToFormattableModule as fn Env: Res FA.Module =
     #Debug.benchStart None
 
     errors & reversedStatements =
-        List.for ([] & []) tokenChunks fn tokens, es & revStats:
+        List.for ([] & []) tokenChunks fn es & revStats, tokens:
             try parse env tokens revStats as
                 'ok newReversedStatements: es & newReversedStatements
                 'err e: [ e, es... ] & revStats

@@ -73,7 +73,7 @@ platformDefaultImportsFile as fn Text, [ Text & [ Text ] ]: ImportsFile =
     fn name, modules:
     platform as ImportsFile.Library =
         {
-        , modules = List.map (fn path & globals: mod path globals) modules
+        , modules = List.map modules (fn path & globals: mod path globals)
         , platform = ""
         , source = ":" .. name
         }

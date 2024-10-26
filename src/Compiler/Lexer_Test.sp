@@ -86,7 +86,7 @@ lexTokensAndDrop as fn Int: fn Text: Result Text [ [ Token ] ] =
     fn s:
     s
     >> lexTokens
-    >> Result.map (List.map (List.drop name __) __) __
+    >> Result.map __ (List.map __ (List.drop name __))
 
 
 lowerName as fn Text: Token.Kind =

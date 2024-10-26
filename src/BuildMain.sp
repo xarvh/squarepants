@@ -17,7 +17,7 @@ installedDir as Text =
 
 
 ioToRes as fn IO.Re a: Res a =
-    Result.mapError (fn err: Error.'raw [ err ]) __
+    Result.mapError __ (fn err: Error.'raw [ err ])
 
 
 getEntryUsr as fn Imports, Text: Res USR =
@@ -195,12 +195,12 @@ listSourceDir as fn @IO, Text, Text: IO.Re [ Text ] =
     >> onOk fn dirContents:
     directChildren =
         dirContents
-        >> List.filterMap asModule __
-        >> List.map (fn fileName: modulePathWithTrailingSlash .. fileName) __
+        >> List.filterMap __ asModule
+        >> List.map __ (fn fileName: modulePathWithTrailingSlash .. fileName)
 
     dirContents
-    >> List.filterMap asModuleDirectory __
-    >> List.mapRes (fn subDir: listSourceDir @io sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/")) __
+    >> List.filterMap __ asModuleDirectory
+    >> List.mapRes __ (fn subDir: listSourceDir @io sourceDirRoot (modulePathWithTrailingSlash .. subDir .. "/"))
     >> onOk fn descendants:
     x =
         [ directChildren, List.concat descendants ] >> List.concat
@@ -217,9 +217,9 @@ ModuleAndPath =
 
 updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     fn fileNames, orig:
-    insertModuleName as fn Text, ImportsFile.SourceDir: ImportsFile.SourceDir =
-        fn name, sd:
-        try List.find (fn m: m.path == name) sd.modules as
+    insertModuleName as fn ImportsFile.SourceDir, Text: ImportsFile.SourceDir =
+        fn sd, name:
+        try List.find sd.modules (fn m: m.path == name) as
             'just _: sd
             'nothing: { sd with modules = { globals = [], path = name, visibleAs = name } :: .modules }
 
@@ -237,11 +237,11 @@ scanSourceDirs as fn @IO, fn Text, Text: Int, Meta.RootPaths, Meta.ImportsPath, 
     # sourceDirs does not contain all modules available in the dir, but only the exceptions;
     # before building Imports we need to add those that are not mentioned.
     importsFile.sourceDirs
-    >> List.mapRes (fn sd: listSourceDir @io (Path.join [ rootPath, importsDir, sd.path ]) "") __
+    >> List.mapRes __ (fn sd: listSourceDir @io (Path.join [ rootPath, importsDir, sd.path ]) "")
     >> ioToRes
     >> onOk fn allSourceDirLists:
     updatedSourceDirs as [ ImportsFile.SourceDir ] =
-        List.map2 updateSourceDir allSourceDirLists importsFile.sourceDirs
+        List.map2 allSourceDirLists importsFile.sourceDirs updateSourceDir
 
     ImportsFile.toImports
         {
@@ -353,7 +353,7 @@ searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
             'nothing
 
         'ok dirContents:
-            if List.any isWantedFile dirContents then
+            if List.any dirContents isWantedFile then
                 searchDir >> 'just
             else
                 parent =
@@ -388,7 +388,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
         # Either use the first ancestor that contains an imports file...
         searchAncestorDirectories @io (fn isDirectory & fileName: not isDirectory and fileName == importsFileName) "."
         # ...either use the current dir
-        >> Maybe.withDefault "." __
+        >> Maybe.withDefault __ "."
 
     IO.writeStdout @io __ << "Project root is " .. Path.resolve [ projectRoot ] .. "\n"
 
@@ -455,7 +455,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     # Figure out the platform library UMR
     #
     Dict.get pars.platform.name projectImports.platforms
-    >> Maybe.toResult (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform." ]) __
+    >> Maybe.toResult __ (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform." ])
     >> onOk fn platformModuleLocations:
     # TODO properly collect or return errors instead of crashing
     makePlatformUmr as fn Name: UMR =
@@ -506,14 +506,14 @@ compileMain as fn @IO, CompileMainPars: Res None =
     # TODO ensure all natives are implemented?
 
     outputFile =
-        Maybe.withDefault pars.platform.defaultOutputName pars.maybeOutputPath
+        Maybe.withDefault pars.maybeOutputPath pars.platform.defaultOutputName
 
     # Should be the last
     _entryUsr as EA.TranslatedUsr =
         EA.translateUsr entryUsr
 
     type =
-        try List.find (fn rv: rv.usr == _entryUsr) rootValues as
+        try List.find rootValues (fn rv: rv.usr == _entryUsr) as
             'just rv: rv.type
             'nothing: todo "no type!?"
 

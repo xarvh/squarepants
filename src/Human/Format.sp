@@ -49,7 +49,7 @@ prefixToFirstNonBlank as fn Text: fn Fmt.Block: Fmt.Block =
                         _:
                             indentedLine
 
-            try head :: tail >> List.reverse >> List.map doLine __ >> List.reverse as
+            try head :: tail >> List.reverse >> List.map __ doLine >> List.reverse as
 
                 []:
                     block
@@ -72,7 +72,7 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
             else
                 open :: items
                 >> Fmt.maybeAllSingleLines
-                >> Maybe.map (Tuple.mapFirst List.reverse __) __
+                >> Maybe.map __ (Tuple.mapFirst List.reverse __)
 
         try z as
 
@@ -88,7 +88,7 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
 
                 itemLines
                 >> List.intersperse (Fmt.'text_ ", ") __
-                >> List.for (Fmt.'row openLine Fmt.'space) __ (fn a, b: Fmt.'row b a)
+                >> List.for (Fmt.'row openLine Fmt.'space) __ Fmt.'row
                 >> mkLine
                 >> Fmt.addSuffix closeLine __
 
@@ -101,7 +101,7 @@ commaSeparatedList as fn Bool, Fmt.Block, Text, Bool, [ Fmt.Block ]: Fmt.Block =
                 #]
                 [
                 , [ open ]
-                , List.map (prefixToFirstNonBlank ", ") items
+                , List.map items (prefixToFirstNonBlank ", ")
                 , [ Fmt.textToBlock close ]
                 ]
                 >> List.concat
@@ -260,11 +260,11 @@ unindentBlockComment as fn Int, Text: [ Text ] =
             minLead as Int =
                 # `head` contains a "[#", we already know its lead is `indent`
                 tail
-                >> List.filter lineIsNonEmpty __
-                >> List.for indent __ fn line, length:
+                >> List.filter __ lineIsNonEmpty
+                >> List.for indent __ fn length, line:
                     min (countLeadingSpaces line) length
 
-            head :: List.map (Text.dropLeft minLead __) tail
+            head :: List.map tail (Text.dropLeft minLead __)
 
 
 formatComment as fn Env, FA.Comment: Fmt.Block =
@@ -285,12 +285,12 @@ formatComment as fn Env, FA.Comment: Fmt.Block =
         if indent == 0 then
             content
             >> unindentBlockComment indent __
-            >> List.map (fn l: l >> Fmt.'commentIgnoreIndent >> Fmt.lineToBlock) __
+            >> List.map __ (fn l: l >> Fmt.'commentIgnoreIndent >> Fmt.lineToBlock)
             >> Fmt.stack
         else if isBlock then
             content
             >> unindentBlockComment indent __
-            >> List.map blockOrBlank __
+            >> List.map __ blockOrBlank
             >> Fmt.stack
         else
             Fmt.'commentWithIndent content >> Fmt.lineToBlock
@@ -304,7 +304,7 @@ formatComment as fn Env, FA.Comment: Fmt.Block =
 formatComments as fn Env, [ FA.Comment ]: Fmt.Block =
     fn env, comments:
     comments
-    >> List.map (formatComment env __) __
+    >> List.map __ (formatComment env __)
     >> Fmt.stack
 
 
@@ -355,7 +355,7 @@ formatLiteralText as fn Token.SingleOrTriple, Text: Fmt.Block =
             rows =
                 text
                 >> Text.split "\n" __
-                >> List.map Fmt.textToBlock __
+                >> List.map __ Fmt.textToBlock
 
             [ [ tripleQuote ], rows, [ tripleQuote ] ]
             >> List.concat
@@ -429,7 +429,7 @@ formatValueDef as fn Env, FA.ValueDef: Fmt.Block =
 formatNonFn as fn [ Pos & Name ]: Fmt.Block =
     fn words:
     words
-    >> List.map (fn pos & name: Fmt.textToBlock name) __
+    >> List.map __ (fn pos & name: Fmt.textToBlock name)
     >> commaSeparatedList 'false (Fmt.textToBlock "with") "NonFunction" 'true __
 
 
@@ -440,17 +440,17 @@ formatDef as fn Maybe Text, Pos & Name, [ Pos & Name ]: Fmt.Block =
             'nothing
         else
             args
-            >> List.map formatFaWord __
+            >> List.map __ formatFaWord
             >> Fmt.spaceSeparatedOrIndent
             >> 'just
 
     [
-    , Maybe.map Fmt.textToBlock maybeKeyword
+    , Maybe.map maybeKeyword Fmt.textToBlock
     , 'just << formatFaWord name
     , formattedArgs
     , 'just << Fmt.textToBlock "="
     ]
-    >> List.filterMap identity __
+    >> List.filterMap __ identity
     >> Fmt.spaceSeparatedOrIndent
 
 
@@ -468,7 +468,7 @@ formatUnionDef as fn Env, FA.VariantTypeDef: Fmt.Block =
     [
     , formatDef ('just "var") name args
     , constructors
-    >> List.map (fn c: Fmt.prefix 2 (Fmt.'text_ ", ") (formatExpression env c)) __
+    >> List.map __ (fn c: Fmt.prefix 2 (Fmt.'text_ ", ") (formatExpression env c))
     >> Fmt.stack
     >> Fmt.indent
     ]
@@ -487,7 +487,7 @@ formatList as fn Env, Bool, [ Bool & FA.Expression ]: Fmt.Block =
             formatExpression env expr
 
     unpacksAndExprs
-    >> List.map formatListItem __
+    >> List.map __ formatListItem
     >> commaSeparatedList isMultiline (Fmt.textToBlock "[") "]" 'true __
 
 
@@ -530,7 +530,7 @@ formatRecord as fn Env, Bool, Maybe (Maybe FA.Expression), [ FA.RecordAttribute 
 
     attrs
     >> List.sortBy attributeName __
-    >> List.map formatRecordAttribute __
+    >> List.map __ formatRecordAttribute
     >> commaSeparatedList isMultiline open "}" 'true __
 
 
@@ -562,7 +562,7 @@ formatLowercase as fn Env, Maybe FA.Expression, Maybe Name, Name, [ Name ]: Fmt.
             'nothing: []
             'just module: [ module, "." ]
         , [ name ]
-        , List.map (fn p: "." .. p) attrPath
+        , List.map attrPath (fn p: "." .. p)
         ]
         >> List.concat
         >> Text.join "" __
@@ -609,7 +609,7 @@ formatConstructor as fn Env, Maybe Name, Name: Fmt.Block =
 
 formatRecordShorthand as fn Env, Name, [ Name ]: Fmt.Block =
     fn env, name, attrPath:
-        List.map (fn p: "." .. p) (name :: attrPath)
+        List.map [name, attrPath...] (fn p: "." .. p)
         >> Text.join "" __
         >> Fmt.textToBlock
 
@@ -627,7 +627,7 @@ formatFunctionHeader as fn Env, [ FA.Expression ]: Fmt.Block =
             _: block
 
     pars
-    >> List.map formatParameter __
+    >> List.map __ formatParameter
     >> commaSeparatedList 'false (Fmt.textToBlock "fn") ":" 'false __
 
 
@@ -684,13 +684,13 @@ formatBinopChain as fn Env, Int, FA.BinopChain: Fmt.Block =
             [ first & _, rest... ]:
                 # op.symbol == ">>"
                 last as FA.Binop =
-                    List.for first rest (fn opX & _, acc: opX)
+                    List.for first rest (fn acc, opX & _: opX)
 
                 last.line > first.line
 
     [
     , formatExpressionAndMaybeAddParens env (chainPrecedence opsAndRights) left
-    , List.map formatOpAndRight opsAndRights...
+    , List.map opsAndRights formatOpAndRight...
     ]
     >> Fmt.spaceSeparatedOrStackForce forceMultiline __
 
@@ -731,7 +731,7 @@ formatCall as fn Env, FA.Expression, [ FA.Expression ]: Fmt.Block =
         Fmt.spaceSeparatedOrIndent
             [
             , formatExpressionAndMaybeAddParens env Op.precedence_application refNoComments
-            , List.indexedMap formatArgument args...
+            , List.mapWithIndex args formatArgument...
             ]
 
     try maybeContinuing as
@@ -793,7 +793,7 @@ formatIf as fn Env, Bool, FA.Expression: Fmt.Block =
             , falseLine
             ]
             >> List.intersperse Fmt.'space __
-            >> Fmt.for1 __ (fn item, acc: Fmt.'row acc item)
+            >> Fmt.for1 __ Fmt.'row
             >> Fmt.lineToBlock
 
         'nothing:
@@ -814,7 +814,7 @@ formatIf as fn Env, Bool, FA.Expression: Fmt.Block =
             Fmt.stack
                 [
                 , conditionsAndValues
-                >> List.indexedMap formatCAndV __
+                >> List.mapWithIndex __ formatCAndV
                 >> Fmt.stack
                 , Fmt.textToBlock "else"
                 , Fmt.indent default
@@ -824,27 +824,27 @@ formatIf as fn Env, Bool, FA.Expression: Fmt.Block =
 formatTry as fn Env, FA.Expression, [ FA.Expression & FA.Expression ]: Fmt.Block =
     fn env, value, patterns:
     formatted as [ Fmt.Block & Fmt.Block ] =
-        List.map (fn pattern & block: formatExpression env pattern & formatExpression env block) patterns
+        List.map patterns (fn pattern & block: formatExpression env pattern & formatExpression env block)
 
     tryOneLine as fn Fmt.Block & Fmt.Block: Result None (Fmt.Line & Fmt.Line) =
         fn pa & bl:
         Fmt.blockAsLine pa
-        >> Maybe.toResult 'none __
+        >> Maybe.toResult __ 'none
         >> onOk fn paLine:
         Fmt.blockAsLine bl
-        >> Maybe.toResult 'none __
+        >> Maybe.toResult __ 'none
         >> onOk fn blockLine:
         'ok (paLine & blockLine)
 
     blocks as [ Fmt.Block ] =
-        try List.mapRes tryOneLine formatted as
+        try List.mapRes formatted tryOneLine as
 
             'ok lines:
                 formatInline =
                     fn paLine & blockLine:
                     Fmt.'row paLine (Fmt.'row (Fmt.'text_ ": ") blockLine) >> Fmt.lineToBlock
 
-                List.map formatInline lines
+                List.map lines formatInline
 
             # TODO restore `None` here once it doesn't break JS any more
             'err _:
@@ -857,7 +857,7 @@ formatTry as fn Env, FA.Expression, [ FA.Expression & FA.Expression ]: Fmt.Block
                     ]
                     >> Fmt.stack
 
-                List.map formatIndented formatted
+                List.map formatted formatIndented
 
     [
     , Fmt.spaceSeparatedOrIndent

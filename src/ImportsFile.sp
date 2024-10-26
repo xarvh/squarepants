@@ -64,27 +64,27 @@ insertModules as fn fn Text: Meta.Location, @Array Text, Text, [ Module ], Impor
         else
             # TODO check for duplicate platforms!
             Dict.empty
-            >> List.for __ modules fn module, dict:
-                Dict.insert module.path (modulePathToLocationFn module.path) dict
-            >> Dict.insert platformName __ imports.platforms
+            >> List.for __ modules fn dict, module:
+                Dict.insert dict module.path (modulePathToLocationFn module.path)
+            >> Dict.insert imports.platforms platformName __
 
-    List.for imports modules fn module, imp:
+    List.for imports modules fn imp, module:
         location =
             modulePathToLocationFn module.path
 
         # Insert module alias
         # TODO check that there is no duplication!
         moduleAliasToLocation =
-            Dict.insert module.visibleAs location imp.moduleAliasToLocation
+            Dict.insert imp.moduleAliasToLocation module.visibleAs location
 
         modulePathToLocation =
-            Dict.insert module.path location imp.modulePathToLocation
+            Dict.insert imp.modulePathToLocation module.path location
 
         # Insert globals
         globalNameToLocation =
-            List.for imp.globalNameToLocation module.globals fn globalName, dict:
+            List.for imp.globalNameToLocation module.globals fn dict, globalName:
                 # TODO check that there is no duplication
-                Dict.insert globalName location dict
+                Dict.insert dict globalName location
 
         { globalNameToLocation, moduleAliasToLocation, modulePathToLocation, platforms }
 
@@ -97,8 +97,8 @@ ToImportsPars =
     }
 
 
-insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
-    fn pars, @errors, sourceDir, imports:
+insertSourceDir as fn Imports, ToImportsPars, @Array Text, SourceDir: Imports =
+    fn imports, pars, @errors, sourceDir:
 
     Meta.'importsPath rootDirectory importsDir =
         pars.importsPath
@@ -114,8 +114,8 @@ insertSourceDir as fn ToImportsPars, @Array Text, SourceDir, Imports: Imports =
     insertModules modulePathToLocation @errors "" sourceDir.modules imports
 
 
-insertLibrary as fn ToImportsPars, @Array Text, Library, Imports: Imports =
-    fn pars, @errors, library, imports:
+insertLibrary as fn Imports, ToImportsPars, @Array Text, Library: Imports =
+    fn imports, pars, @errors, library:
     try parseLibrarySource library.source as
 
         'err msg:
@@ -155,11 +155,11 @@ toImports as fn ToImportsPars, ImportsFile: Res Imports =
 
     meta =
         Meta.initImports
-        >> List.for __ importsFile.libraries (insertLibrary pars @errors __ __)
-        >> List.for __ importsFile.sourceDirs (insertSourceDir pars @errors __ __)
+        >> List.for __ importsFile.libraries (insertLibrary __ pars @errors __)
+        >> List.for __ importsFile.sourceDirs (insertSourceDir __ pars @errors __)
 
     errs =
-        Array.toList @errors >> List.map (fn msg: Error.'raw [ msg ]) __
+        Array.toList @errors >> List.map __ (fn msg: Error.'raw [ msg ])
 
     if errs == [] then
         'ok meta
@@ -191,9 +191,9 @@ moduleReader as SPON.Reader Module =
     >> SPON.onAcc fn globals:
     SPON.return
         {
-        , globals = Maybe.withDefault [] globals
+        , globals = Maybe.withDefault globals []
         , path = path
-        , visibleAs = Maybe.withDefault path visibleAs
+        , visibleAs = Maybe.withDefault visibleAs path
         }
 
 
@@ -207,7 +207,7 @@ libraryReader as SPON.Reader Library =
     SPON.return
         {
         , modules = modules
-        , platform = Maybe.withDefault "" platform
+        , platform = Maybe.withDefault platform ""
         , source = source
         }
 
@@ -235,12 +235,12 @@ modulesFileReader as SPON.Reader [ RootEntry ] =
 
 fromText as fn Text, Text: Res ImportsFile =
     fn sponName, sponContent:
-    insert as fn RootEntry, ImportsFile: ImportsFile =
-        fn rootEntry, mf:
+    insert as fn ImportsFile, RootEntry: ImportsFile =
+        fn mf, rootEntry:
         try rootEntry as
             'lib lib: { mf with libraries = lib :: mf.libraries }
             'dir dir: { mf with sourceDirs = dir :: mf.sourceDirs }
 
     sponContent
     >> SPON.read modulesFileReader sponName __
-    >> Result.map (List.for init __ insert) __
+    >> Result.map __ (List.for init __ insert)

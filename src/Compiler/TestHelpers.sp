@@ -41,7 +41,7 @@ formattedToStrippedText as fn [ Error.FormattedText ]: Text =
             Error.'formattedText_Decoration t: t
 
     formatted
-    >> List.map strip __
+    >> List.map __ strip
     >> Text.join "" __
 
 
@@ -52,7 +52,7 @@ errorToStrippedText as fn Error: Text =
 
 
 resErrorToStrippedText as fn Res a: Result Text a =
-    Result.mapError errorToStrippedText __
+    Result.mapError __ errorToStrippedText
 
 
 #
@@ -162,7 +162,7 @@ caList as fn CA.RawType: CA.RawType =
 
 caFunction as fn [ CA.RawType ], CA.RawType: CA.RawType =
     fn from, to:
-    CA.'typeFn Pos.'t (List.map (fn t: CA.'parSp (toImm t)) from) (toImm to)
+    CA.'typeFn Pos.'t (List.map from (fn t: CA.'parSp (toImm t))) (toImm to)
 
 
 #
@@ -195,4 +195,4 @@ taList as fn TA.RawType: TA.RawType =
 
 taFunction as fn [ TA.RawType ], TA.RawType: TA.RawType =
     fn from, to:
-    TA.'typeFn Pos.'t (List.map (fn t: TA.'parSp (toImm t)) from) (toImm to)
+    TA.'typeFn Pos.'t (List.map from (fn t: TA.'parSp (toImm t))) (toImm to)

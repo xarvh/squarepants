@@ -28,14 +28,14 @@ get as fn key, Dict key v: Maybe v with key NonFunction =
                 _: get targetKey left
 
 
-member as fn key, Dict key v: Bool with key NonFunction =
+has as fn key, Dict key v: Bool with key NonFunction =
     fn key, dict:
     try get key dict as
         'just _: 'true
         'nothing: 'false
 
 
-size as fn Dict key v: Int with key NonFunction =
+length as fn Dict key v: Int with key NonFunction =
     sizeHelp as fn Int, Dict key v: Int =
         fn n, dict:
         try dict as
@@ -52,8 +52,8 @@ isEmpty as fn Dict key v: Bool =
         'node _ _ _ _ _: 'false
 
 
-insert as fn key, v, Dict key v: Dict key v with key NonFunction =
-    fn key, value, dict:
+insert as fn Dict key v, key, v: Dict key v with key NonFunction =
+    fn dict, key, value:
     # Root node as always Black
     try insertHelp key value dict as
         'node 'red k v l r: 'node 'black k v l r
@@ -91,8 +91,8 @@ balance as fn NColor, key, v, Dict key v, Dict key v: Dict key v =
                 _: 'node color key value left right
 
 
-remove as fn key, Dict key v: Dict key v with key NonFunction =
-    fn key, dict:
+remove as fn Dict key v, key: Dict key v with key NonFunction =
+    fn dict, key:
     # Root node as always Black
     try removeHelp key dict as
         'node 'red k v l r: 'node 'black k v l r
@@ -233,11 +233,11 @@ moveRedRight as fn Dict key v: Dict key v =
             dict
 
 
-update as fn key, fn Maybe v: Maybe v, Dict key v: Dict key v with key NonFunction =
+update as fn key, (fn Maybe v: Maybe v), Dict key v: Dict key v with key NonFunction =
     fn targetKey, alter, dictionary:
     try alter (get targetKey dictionary) as
-        'just value: insert targetKey value dictionary
-        'nothing: remove targetKey dictionary
+        'just value: insert dictionary targetKey value
+        'nothing: remove dictionary targetKey
 
 
 ofOne as fn key, v: Dict key v with key NonFunction =
@@ -254,16 +254,17 @@ join as fn Dict key v, Dict key v: Dict key v with key NonFunction =
 
 intersect as fn Dict key a, Dict key b: Dict key a with key NonFunction =
     fn t1, t2:
-    filter (fn k, _: member k t2) t1
+    filterWithKey (fn k, _: has k t2) t1
 
 
 diff as fn Dict key a, Dict key b: Dict key a with key NonFunction =
     fn t1, t2:
-    for t1 t2 (fn k, v, t: remove k t)
+    for t1 t2 (fn t, k, v: remove t k)
 
 
-merge as fn fn key, a, res: res, fn key, a, b, res: res, fn key, b, res: res, Dict key a, Dict key b, res: res with key NonFunction =
+merge as fn (fn key, a, res: res), (fn key, a, b, res: res), (fn key, b, res: res), Dict key a, Dict key b, res: res with key NonFunction =
     fn leftStep, bothStep, rightStep, leftDict, rightDict, initialResult:
+    #
     stepState as fn key, b, [ key & a ] & res: [ key & a ] & res =
         fn rKey, rValue, q:
         list & res =
@@ -281,67 +282,50 @@ merge as fn fn key, a, res: res, fn key, a, b, res: res, fn key, b, res: res, Di
                     _: stepState rKey rValue (rest & leftStep lKey lValue res)
 
     (leftovers as [ key & a ]) & (intermediateResult as res) =
-        for (toList leftDict & initialResult) rightDict stepState
+        for (toList leftDict & initialResult) rightDict (fn a, k, v: stepState k v a)
 
-    liftLeftStep as fn key & a, res: res =
-        fn t, res:
-        k & v =
-            t
-
-        leftStep k v res
-
-    List.for intermediateResult leftovers liftLeftStep
+    List.for intermediateResult leftovers (fn res, key & a: leftStep key a res)
 
 
 onlyBothOnly as fn Dict key a, Dict key b: Dict key a & Dict key (a & b) & Dict key b =
     fn da, db:
     onAOnly =
         fn key, a, aOnly & both & bOnly:
-        insert key a aOnly & both & bOnly
+        insert aOnly key a & both & bOnly
 
     onBOnly =
         fn key, b, aOnly & both & bOnly:
-        aOnly & both & insert key b bOnly
+        aOnly & both & insert bOnly key b
 
     onBoth =
         fn key, a, b, aOnly & both & bOnly:
-        aOnly & insert key (a & b) both & bOnly
+        aOnly & insert both key (a & b) & bOnly
 
     merge onAOnly onBoth onBOnly da db (empty & empty & empty)
 
 
 # TRANSFORM
 
-map as fn fn k, a: b, Dict k a: Dict k b =
-    fn func, dict:
+map as fn Dict k a, (fn a: b): Dict k b =
+    fn dict, func:
     try dict as
         'empty: 'empty
-        'node color key value left right: 'node color key (func key value) (map func left) (map func right)
+        'node color key value left right: 'node color key (func value) (map left func) (map right func)
 
 
-mapRes as fn fn k, a: Result e b, Dict k a: Result e (Dict k b) =
-    fn func, dict:
+mapWithKey as fn Dict k a, (fn k, a: b): Dict k b =
+    fn dict, func:
     try dict as
-
-        'empty:
-            'ok 'empty
-
-        'node color key value left right:
-            func key value
-            >> Result.onOk fn one:
-            mapRes func left
-            >> Result.onOk fn two:
-            mapRes func right
-            >> Result.onOk fn three:
-            'ok << 'node color key one two three
+        'empty: 'empty
+        'node color key value left right: 'node color key (func key value) (mapWithKey left func) (mapWithKey right func)
 
 
-mapKeys as fn fn k: j, Dict k a: Dict j a =
+mapKeys as fn (fn k: j), Dict k a: Dict j a =
     fn func, dict:
-    for Dict.empty dict (fn k, v, d: Dict.insert (func k) v d)
+    for Dict.empty dict (fn d, k, v: insert d (func k) v)
 
 
-each as fn Dict k v, fn k, v: None: None =
+each as fn Dict k v, (fn k, v: None): None =
     fn dict, func:
     try dict as
 
@@ -356,14 +340,14 @@ each as fn Dict k v, fn k, v: None: None =
             each right func
 
 
-for as fn b, Dict k v, fn k, v, b: b: b =
+for as fn b, Dict k v, (fn b, k, v: b): b =
     fn acc, dict, func:
     try dict as
         'empty: acc
-        'node _ key value left right: for (func key value (for acc left func)) right func
+        'node _ key value left right: for (func (for acc left func) key value) right func
 
 
-forRes as fn b, Dict k v, fn k, v, b: Result e b: Result e b =
+forRes as fn b, Dict k v, (fn k, v, b: Result e b): Result e b =
     fn acc, dict, func:
     try dict as
 
@@ -378,19 +362,24 @@ forRes as fn b, Dict k v, fn k, v, b: Result e b: Result e b =
             forRes f right func
 
 
-forReversed as fn b, Dict k v, fn k, v, b: b: b =
+forReversed as fn b, Dict k v, (fn k, v, b: b): b =
     fn acc, t, func:
     try t as
         'empty: acc
         'node _ key value left right: forReversed (func key value (forReversed acc right func)) left func
 
 
-filter as fn fn key, v: Bool, Dict key v: Dict key v with key NonFunction =
+filter as fn (fn v: Bool), Dict key v: Dict key v with key NonFunction =
     fn isGood, dict:
-    for empty dict (fn k, v, d: if isGood k v then insert k v d else d)
+    for empty dict (fn d, k, v: if isGood v then insert d k v else d)
 
 
-partition as fn fn key, v: Bool, Dict key v: Dict key v & Dict key v with key NonFunction =
+filterWithKey as fn (fn key, v: Bool), Dict key v: Dict key v with key NonFunction =
+    fn isGood, dict:
+    for empty dict (fn d, k, v: if isGood k v then insert d k v else d)
+
+
+partition as fn (fn key, v: Bool), Dict key v: Dict key v & Dict key v with key NonFunction =
     fn isGood, dict:
     add =
         fn key, value, t:
@@ -398,16 +387,16 @@ partition as fn fn key, v: Bool, Dict key v: Dict key v & Dict key v with key No
             t
 
         if isGood key value then
-            insert key value t1 & t2
+            insert t1 key value & t2
         else
-            t1 & insert key value t2
+            t1 & insert t2 key value
 
     for (empty & empty) dict add
 
 
 # QUERY?
 
-any as fn fn k, v: Bool, Dict k v: Bool =
+any as fn (fn k, v: Bool), Dict k v: Bool =
     fn f, dict:
     try dict as
 
@@ -440,4 +429,4 @@ toList as fn Dict k v: [ k & v ] =
 
 
 fromList as fn [ key & v ]: Dict key v with key NonFunction =
-    List.for empty __ (fn keyAndValue, dict: insert keyAndValue.first keyAndValue.second dict)
+    List.for empty __ (fn dict, keyAndValue: insert dict keyAndValue.first keyAndValue.second)

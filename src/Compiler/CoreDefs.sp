@@ -189,8 +189,8 @@ boolDef as CA.VariantTypeDef =
     {
     , constructors =
         Dict.empty
-        >> Dict.insert trueName trueDef __
-        >> Dict.insert falseName falseDef __
+        >> Dict.insert __ trueName trueDef
+        >> Dict.insert __ falseName falseDef
     , pars = []
     , usr = boolUsr
     }
@@ -261,8 +261,8 @@ listDef as CA.VariantTypeDef =
     {
     , constructors =
         Dict.empty
-        >> Dict.insert nilName nilDef __
-        >> Dict.insert consName consDef __
+        >> Dict.insert __ nilName nilDef
+        >> Dict.insert __ consName consDef
     , pars = [ "item" & Pos.'n ]
     , usr = listUsr
     }
@@ -280,7 +280,7 @@ tyVar as fn Name: CA.RawType =
 
 tyFn as fn [ CA.RawType ], CA.FullType: CA.RawType =
     fn pars, to:
-    CA.'typeFn Pos.'n (List.map (fn p: CA.'parSp (toImm p)) pars) to
+    CA.'typeFn Pos.'n (List.map pars (fn p: CA.'parSp (toImm p))) to
 
 
 typeBinopImm as fn CA.RawType, CA.RawType, CA.RawType: CA.RawType =
@@ -345,7 +345,7 @@ binops as [ Op.Binop ] =
 
 
 binopsBySymbol as Dict Text Op.Binop =
-    List.for Dict.empty binops (fn bop, d: Dict.insert bop.symbol bop d)
+    List.for Dict.empty binops (fn d, bop: Dict.insert d bop.symbol bop)
 
 
 #
@@ -406,8 +406,8 @@ tuple as Op.Binop =
     , symbol = "&"
     , type =
         Dict.empty
-        >> Dict.insert "first" (tyVar "a") __
-        >> Dict.insert "second" (tyVar "b") __
+        >> Dict.insert __ "first" (tyVar "a")
+        >> Dict.insert __ "second" (tyVar "b")
         >> CA.'typeRecord Pos.'n __
         >> typeBinopImm (tyVar "a") (tyVar "b") __
     , usr = usr "<& is just sugar>"
@@ -602,10 +602,10 @@ insert as fn USR, CA.RawType, [ Name ], Dict Name CA.ValueDef: Dict Name CA.Valu
     tyvars as Dict Name { nonFn as Maybe Pos } =
         raw
         >> CA.typeTyvars __
-        >> Dict.map (fn n, pos: { nonFn = if Set.member n nonFn then 'just Pos.'n else 'nothing }) __
+        >> Dict.mapWithKey __ (fn n, pos: { nonFn = if Set.member n nonFn then 'just Pos.'n else 'nothing })
 
     {
-    , directDeps = Compiler/MakeCanonical.typeDeps raw Dict.empty
+    , directDeps = Compiler/MakeCanonical.typeDeps Dict.empty raw
     , maybeAnnotation =
         'just
             {
@@ -617,7 +617,7 @@ insert as fn USR, CA.RawType, [ Name ], Dict Name CA.ValueDef: Dict Name CA.Valu
     , name
     , namePos = Pos.'n
     }
-    >> Dict.insert name __ dict
+    >> Dict.insert dict name __
 
 
 coreModule as CA.Module =
@@ -629,11 +629,11 @@ coreModule as CA.Module =
         , boolDef
         , listDef
         ]
-        >> List.for Dict.empty __ fn def, dict:
+        >> List.for Dict.empty __ fn dict, def:
             'USR _ name =
                 def.usr
 
-            Dict.insert name def dict
+            Dict.insert dict name def
 
     constructorDefs as Dict Name CA.ConstructorDef =
         [
@@ -643,12 +643,12 @@ coreModule as CA.Module =
         , nilDef
         , consDef
         ]
-        >> List.for Dict.empty __ (fn def, dict: Dict.insert def.name def dict)
+        >> List.for Dict.empty __ (fn dict, def: Dict.insert dict def.name def)
 
     valueDefs as Dict Name CA.ValueDef =
         Dict.empty
-        >> List.for __ [ unaryPlus, unaryMinus ] (fn unop, dict: insert unop.usr unop.type [] dict)
-        >> List.for __ binops (fn binop, dict: insert binop.usr binop.type binop.nonFn dict)
+        >> List.for __ [ unaryPlus, unaryMinus ] (fn dict, unop: insert unop.usr unop.type [] dict)
+        >> List.for __ binops (fn dict, binop: insert binop.usr binop.type binop.nonFn dict)
 
     {
     , aliasDefs = Dict.empty

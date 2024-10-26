@@ -355,7 +355,7 @@ newAddErrorIf as fn Bool, @State, Env, Pos, Text: None =
         'none
 
 
-newAddErrorMaybe as fn Maybe a, @State, Env, Pos, fn a: Text: None =
+newAddErrorMaybe as fn Maybe a, @State, Env, Pos, (fn a: Text): None =
     fn maybe, @state, env, pos, getMessage:
     try maybe as
         'nothing: 'none
@@ -381,7 +381,7 @@ generalize as fn Env, Pos, Ref, Instance, @State: TA.FullType =
     fn env, pos, ref, instance, @state:
     # TODO this function is not inline because the parser gets confused
     replaceUnivar =
-        fn originalUnivarId, _, r:
+        fn r, originalUnivarId, _:
         newUnivarId =
             newTyvarId @state
 
@@ -391,7 +391,7 @@ generalize as fn Env, Pos, Ref, Instance, @State: TA.FullType =
     raw =
         instance.type.raw
         >> Dict.for __ instance.freeUnivars replaceUnivar
-        >> Dict.for __ instance.freeTyvars fn originalTyvarId, tyvar, a:
+        >> Dict.for __ instance.freeTyvars fn a, originalTyvarId, tyvar:
             generalizedTyvarId =
                 newTyvarId @state
 
@@ -413,10 +413,10 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
     try raw as
 
         TA.'typeExact p usr args:
-            TA.'typeExact p usr (List.map doRaw args)
+            TA.'typeExact p usr (List.map args doRaw)
 
         TA.'typeRecord p maybeExt attrs:
-            TA.'typeRecord p maybeExt (Dict.map (fn k, v: doRaw v) attrs)
+            TA.'typeRecord p maybeExt (Dict.map attrs doRaw)
 
         TA.'typeError:
             TA.'typeError
@@ -437,7 +437,7 @@ replaceUnivarRec as fn UnivarId, Uniqueness, TA.RawType: TA.RawType =
                     TA.'parRe r: TA.'parRe (doRaw r)
                     TA.'parSp f: TA.'parSp { raw = doRaw f.raw, uni = doUni f.uni }
 
-            TA.'typeFn p (List.map mapPar ins) { raw = doRaw out.raw, uni = doUni out.uni }
+            TA.'typeFn p (List.map ins mapPar) { raw = doRaw out.raw, uni = doUni out.uni }
 
 
 #
@@ -453,13 +453,13 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
     try type as
 
         TA.'typeExact p usr args:
-            TA.'typeExact p usr (List.map rec args)
+            TA.'typeExact p usr (List.map args rec)
 
         TA.'typeFn p ins out:
             TA.'typeFn p (TA.mapPars rec ins) { out with raw = rec .raw }
 
         TA.'typeRecord p 'nothing attrs:
-            TA.'typeRecord p 'nothing (Dict.map (fn k, v: rec v) attrs)
+            TA.'typeRecord p 'nothing (Dict.map attrs rec)
 
         TA.'typeVar p id:
             try Dict.get id tyvarIdsToType as
@@ -467,7 +467,7 @@ expandTyvarsInType as fn Dict TA.TyvarId TA.RawType, TA.RawType: TA.RawType =
                 'just ty: ty
 
         TA.'typeRecord p ('just id) attrs:
-            TA.'typeRecord p ('just id) (Dict.map (fn k, v: rec v) attrs)
+            TA.'typeRecord p ('just id) (Dict.map attrs rec)
 
         TA.'typeError:
             TA.'typeError
@@ -503,19 +503,16 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
     try caType as
 
         CA.'typeFn pos caPars caOut:
-            zzz =
-                fn caPar:
+            taArgs as [ TA.ParType ] =
+                List.map caPars fn caPar:
                     try caPar as
                         CA.'parRe caRaw: TA.'parRe (rec caRaw)
                         CA.'parSp caFull: TA.'parSp (translateFullType env argsByName originalIdToNewId @errors caFull)
 
-            taArgs as [ TA.ParType ] =
-                List.map zzz caPars
-
             TA.'typeFn pos taArgs (translateFullType env argsByName originalIdToNewId @errors caOut)
 
         CA.'typeRecord pos caAttrs:
-            TA.'typeRecord pos 'nothing (Dict.map (fn name, v: rec v) caAttrs)
+            TA.'typeRecord pos 'nothing (Dict.map caAttrs rec)
 
         CA.'typeAnnotationVariable pos name:
             try Dict.get name argsByName as
@@ -530,7 +527,7 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
 
         CA.'typeNamed pos usr pars:
             expandedPars as [ TA.RawType ] =
-                List.map rec pars
+                List.map pars rec
 
             try Dict.get usr env.expandedAliases as
 
@@ -552,7 +549,7 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
                         TA.'typeError
                     else
                         tyvarIdsToType as Dict TA.TyvarId TA.RawType =
-                            List.map2 Tuple.pair expandedAlias.pars expandedPars >> Dict.fromList
+                            List.map2 expandedAlias.pars expandedPars Tuple.pair >> Dict.fromList
 
                         expandTyvarsInType tyvarIdsToType expandedAlias.type
 
@@ -560,7 +557,7 @@ translateRawType as fn Env, Dict Name TA.RawType, Dict UnivarId UnivarId, @Array
 translateAnnotationType as fn Env, @State, CA.RawType: TA.RawType =
     fn env, @state, ca:
     nameToType =
-        Dict.map (fn k, v: TA.'typeVar Pos.'g v) env.annotatedTyvarsByName
+        Dict.map env.annotatedTyvarsByName (TA.'typeVar Pos.'g __)
 
     translateRawType env nameToType env.annotatedUnivarsByOriginalId @state.errors ca
 
@@ -686,7 +683,7 @@ CA_ValueDef =
     }
 
 
-doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
+doDefinition as fn (fn Name: Ref), Env, CA_ValueDef, @State: TA.ValueDef & Env =
     fn nameToRef, baseEnv, def, @state:
     # TODO explain why we need this...
     !parentBoundTyvars =
@@ -742,12 +739,12 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
     freeUnivars as Dict UnivarId TA.Univar =
         def.pattern
         >> CA.patternNames
-        >> List.filterMap (fn entry: entry.maybeAnnotation) __
-        >> List.for Dict.empty __ (fn annotation, acc: Dict.join annotation.univars acc)
-        >> Dict.for Dict.empty __ fn annotatedId, 'none, acc:
+        >> List.filterMap __ (fn entry: entry.maybeAnnotation)
+        >> List.for Dict.empty __ (fn acc, annotation: Dict.join annotation.univars acc)
+        >> Dict.for Dict.empty __ fn acc, annotatedId, 'none:
             try Dict.get annotatedId localEnv.annotatedUnivarsByOriginalId as
                 'nothing: acc
-                'just newId: Dict.insert newId { annotatedId } acc
+                'just newId: Dict.insert acc newId { annotatedId }
 
     # TODO explain what is happening here
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
@@ -757,7 +754,7 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
             fn tyvarId:
             try Hash.get @state.tyvarSubs tyvarId as
                 'nothing: Set.empty
-                'just raw: Dict.map (fn k, v: 'none) (TA.typeTyvars raw)
+                'just raw: Dict.map (TA.typeTyvars raw) (fn v: 'none)
 
         resolvedParentBoundTyvars as Set TA.TyvarId =
             Hash.for_ Set.empty @parentBoundTyvars fn parentTyvar, _, set:
@@ -766,11 +763,11 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                 >> Set.for __ (allBindableTyvarsIn parentTyvar) Set.insert
 
         tyvarAnnotatedNameByTyvarId =
-            Dict.for Dict.empty localEnv.annotatedTyvarsByName (fn name, tyvarId, acc: Dict.insert tyvarId name acc)
+            Dict.for Dict.empty localEnv.annotatedTyvarsByName (fn acc, name, tyvarId: Dict.insert acc tyvarId name)
 
         defType.raw
         >> TA.typeTyvars
-        >> Dict.for Dict.empty __ fn id, _, acc:
+        >> Dict.for Dict.empty __ fn acc, id, _:
             if Set.member id resolvedParentBoundTyvars then
                 acc
             else
@@ -782,13 +779,13 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
                     # TODO: actually set allowFunctions!!!
                     'just name:
                         { maybeAnnotated = 'just { allowFunctions = 'true, name } }
-                >> Dict.insert id __ acc
+                >> Dict.insert acc id __
 
     #
     # Add instance
     #
     caNames =
-        CA.patternNames def.pattern >> List.indexBy (fn e: e.name) __
+        CA.patternNames def.pattern >> List.indexBy __ (fn e: e.name)
 
     instance as fn Name, { pos as Pos, type as TA.FullType }: Instance =
         fn name, { pos, type = unresolvedType }:
@@ -799,11 +796,11 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
             TA.typeTyvars type.raw
 
         actualTyvars =
-            Dict.filter (fn k, v: Dict.member k typeTyvars) freeTyvars
+            Dict.filterWithKey (fn k, v: Dict.has k typeTyvars) freeTyvars
 
         tryAsStillBreaksIfUsedImperatively =
             try Dict.get name caNames as
-                'just { with  maybeAnnotation = 'just annotation, pos = p }: addErrorIf (Dict.size annotation.tyvars > Dict.size actualTyvars) localEnv p ('errorTyvarNotIndependent name) @state
+                'just { with  maybeAnnotation = 'just annotation, pos = p }: addErrorIf (Dict.length annotation.tyvars > Dict.length actualTyvars) localEnv p ('errorTyvarNotIndependent name) @state
                 _: 'none
 
         # TODO Also check that all uniqueness vars are independent
@@ -817,8 +814,8 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
 
     variables =
         patternOut.env.variables
-        >> Dict.for __ (TA.patternNames patternOut.typedPattern) fn name, stuff, vars:
-            Dict.insert (nameToRef name) (instance name stuff) vars
+        >> Dict.for __ (TA.patternNames patternOut.typedPattern) fn vars, name, stuff:
+            Dict.insert vars (nameToRef name) (instance name stuff)
 
     {
     , body = typedBody
@@ -837,11 +834,6 @@ doDefinition as fn fn Name: Ref, Env, CA_ValueDef, @State: TA.ValueDef & Env =
 # Expression
 #
 #
-maybe_map as fn Maybe a, fn a: b: Maybe b =
-    fn m, f:
-    Maybe.map f m
-
-
 doLiteralNumber as fn @State, Env, Maybe TA.FullType, Pos, Int: TA.Expression & TA.FullType =
     fn @state, env, expectedType, pos, n:
     maybeInvalidRaw =
@@ -926,7 +918,7 @@ doVariable =
                 generalizedType =
                     generalize env pos ref variableInstance @state
 
-                maybe_map expectedType fn fullType:
+                Maybe.map expectedType fn fullType:
                     checkUni env pos { given = generalizedType.uni, required = fullType.uni } @state
 
                     addEquality env pos 'why_Annotation generalizedType.raw fullType.raw @state
@@ -951,7 +943,7 @@ doConstructor =
                     generalize env pos ('refGlobal usr) cons @state
 
                 # Constructor literal is always unique, so we don't care about uniqueness
-                maybe_map expectedType fn { with  raw }:
+                Maybe.map expectedType fn { with  raw }:
                     try raw as
 
                         TA.'typeExact _ _ _:
@@ -1060,7 +1052,7 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
 
             localEnv as Env =
                 # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
-                { env with variables = Dict.insert ('refLocal name) variable .variables }
+                { env with variables = Dict.insert .variables ('refLocal name) variable }
 
             TA.'parameterRecycle pos raw name & TA.'parRe raw & localEnv
 
@@ -1086,7 +1078,7 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
                         }
 
                     newEnv =
-                        { env with variables = Dict.insert ('refPlaceholder num) variable .variables }
+                        { env with variables = Dict.insert .variables ('refPlaceholder num) variable }
 
                     TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
@@ -1114,7 +1106,7 @@ doParameter as fn @State, Env, Int, Maybe TA.ParType, CA.Parameter: TA.Parameter
                         }
 
                     newEnv as Env =
-                        { env with variables = Dict.insert ('refPlaceholder num) instance .variables }
+                        { env with variables = Dict.insert .variables ('refPlaceholder num) instance }
 
                     TA.'parameterPlaceholder type num & TA.'parSp type & newEnv
 
@@ -1130,11 +1122,11 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
 
         TA.'error pos & fullTypeError
 
-    Result.recoverFromError errorToOk fn _:
+    Result.resolveErrorsWith errorToOk fn _:
     try expectedType as
 
         'just { with  raw = TA.'typeFn _ parameterTypes returnType }:
-            List.map 'just parameterTypes & 'just returnType
+            List.map parameterTypes 'just & 'just returnType
             #
             >> 'ok
 
@@ -1182,7 +1174,7 @@ doFunction as fn @State, Env, Maybe TA.FullType, Pos, [ CA.Parameter ], CA.Expre
       ----> At the end of a Definition we take the type tyvars, see which ones are free, then resolve them.
     #]
     bodyEnv =
-        List.indexedFor2 env caParameters expectedParameterTypes fn index, caParameter, expectedParameterType, bodyEnvAcc:
+        List.for2WithIndex env caParameters expectedParameterTypes fn bodyEnvAcc, index, caParameter, expectedParameterType:
             typedParameter & parameterType & envX =
                 doParameter @state bodyEnvAcc index expectedParameterType caParameter
 
@@ -1215,7 +1207,7 @@ doCall as fn @State, Env, Maybe TA.FullType, Pos, CA.Expression, [ CA.Argument ]
         doExpression @state env 'nothing reference
 
     typedArguments as [ TA.Argument ] =
-        givenArgs >> List.map (fn arg: inferArgument env arg @state) __
+        givenArgs >> List.map __ (fn arg: inferArgument env arg @state)
 
     toTypeArg as fn TA.Argument: TA.ParType =
         fn arg:
@@ -1238,7 +1230,7 @@ doCall as fn @State, Env, Maybe TA.FullType, Pos, CA.Expression, [ CA.Argument ]
 
                     fullTypeError
                 else
-                    List.indexedEach2 typedArguments parTypes fn index, givenArg, parType:
+                    List.each2WithIndex typedArguments parTypes fn index, givenArg, parType:
                         try givenArg & parType as
 
                             TA.'argumentRecycle p givenRaw attrPath name & TA.'parRe inferredRaw:
@@ -1286,7 +1278,7 @@ doCall as fn @State, Env, Maybe TA.FullType, Pos, CA.Expression, [ CA.Argument ]
                             { raw = newRawType @state, uni = 'imm }
 
                 refTy =
-                    TA.'typeFn p (List.map toTypeArg typedArguments) returnType
+                    TA.'typeFn p (List.map typedArguments toTypeArg) returnType
 
                 addEquality env pos 'why_CalledAsFunction refTy inferredReferenceType.raw @state
 
@@ -1307,17 +1299,17 @@ doCall as fn @State, Env, Maybe TA.FullType, Pos, CA.Expression, [ CA.Argument ]
 inferRecord as fn Env, Pos, Maybe CA.Expression, Dict Name CA.Expression, @State: TA.Expression & TA.FullType =
     fn env, pos, maybeExt, caAttrs, @state:
     taAttrs as Dict Name (TA.Expression & TA.FullType) =
-        Dict.map (fn name, value: doExpression @state env 'nothing value) caAttrs
+        Dict.map caAttrs (doExpression @state env 'nothing __)
 
     typedAttrs as Dict Name TA.Expression =
-        Dict.map (fn k, v: Tuple.first v) taAttrs
+        Dict.map taAttrs Tuple.first
 
     attrTypes as Dict Name TA.RawType =
-        Dict.map (fn k, _ & t: t.raw) taAttrs
+        Dict.map taAttrs (fn _ & t: t.raw)
 
     uni as Uniqueness =
         'uni
-        >> Dict.for __ taAttrs fn k, _ & full, u:
+        >> Dict.for __ taAttrs fn u, k, _ & full:
             inferUni full.uni u
 
     try maybeExt as
@@ -1381,8 +1373,9 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
             typedExt & _ =
                 doExpression @state env expectedType ext
 
-            zzz =
-                fn attrName, attrExpr:
+            # all valueByName attrs must be in typeByName
+            typedValueByName as Dict Name TA.Expression =
+                Dict.mapWithKey caValueByName fn attrName, attrExpr:
                     try Dict.get attrName typeByName as
 
                         'nothing:
@@ -1396,10 +1389,6 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
 
                             doExpression @state env ('just fullAttrType) attrExpr
                     >> Tuple.first
-
-            # all valueByName attrs must be in typeByName
-            typedValueByName as Dict Name TA.Expression =
-                Dict.map zzz caValueByName
 
             exp as TA.Expression =
                 TA.'record pos ('just typedExt) typedValueByName
@@ -1421,7 +1410,7 @@ doRecord as fn @State, Env, Maybe TA.FullType, Pos, Maybe CA.Expression, Dict Na
                 'none
 
             typedAttrs as Dict Name TA.Expression =
-                Dict.map (fn name, value & type: doExpression @state env ('just { raw = type, uni }) value >> Tuple.first) both
+                Dict.map both (fn value & type: doExpression @state env ('just { raw = type, uni }) value >> Tuple.first)
 
             fullType as TA.FullType =
                 { raw = TA.'typeRecord tp 'nothing typeByName, uni }
@@ -1479,7 +1468,7 @@ inferRecordAccess as fn Env, Pos, Name, TA.RawType, @State: TA.RawType =
                         newRawType @state
 
                     type =
-                        TA.'typeRecord p ('just newExtId) (Dict.insert attrName newAttrType extensionAttrTypes)
+                        TA.'typeRecord p ('just newExtId) (Dict.insert extensionAttrTypes attrName newAttrType)
 
                     addEquality env pos 'why_RecordAccess (TA.'typeVar p tyvarId) type @state
 
@@ -1758,7 +1747,7 @@ doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.
 
     uni & patternsAndExpressions =
         'uni & []
-        >> List.forReversed __ caPatternsAndExpressions fn u & pa & exp, uniX & acc:
+        >> List.forReversed __ caPatternsAndExpressions fn uniX & acc, u & pa & exp:
             patternOut as PatternOut =
                 inferPattern env u pa @state
 
@@ -1811,7 +1800,7 @@ inferArgument as fn Env, CA.Argument, @State: TA.Argument =
 
                     'just var:
                         var.type.raw
-                        >> List.for __ attrPath fn attrName, tyAcc:
+                        >> List.for __ attrPath fn tyAcc, attrName:
                             inferRecordAccess env pos attrName tyAcc @state
 
             TA.'argumentRecycle pos raw attrPath name
@@ -1859,17 +1848,17 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
         CA.'patternConstructor pos usr arguments:
             argumentOuts & newEnv =
                 [] & env
-                >> List.forReversed __ arguments fn arg, argOuts & envX:
+                >> List.forReversed __ arguments fn argOuts & envX, arg:
                     out =
                         inferPattern envX uni arg @state
 
                     (out :: argOuts) & out.env
 
             typedArguments =
-                List.map (fn out: out.typedPattern) argumentOuts
+                List.map argumentOuts (fn out: out.typedPattern)
 
             argumentTypes =
-                List.map (fn out: out.patternType) argumentOuts
+                List.map argumentOuts (fn out: out.patternType)
 
             finalType =
                 try getConstructorByUsr usr env as
@@ -1890,7 +1879,7 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
 
                         addErrorIf (List.length parTypes /= List.length arguments) env pos 'errorWrongNumberOfConstructorArguments @state
 
-                        List.indexedEach2 parTypes argumentTypes fn index, parType, argType:
+                        List.each2WithIndex parTypes argumentTypes fn index, parType, argType:
                             try parType as
 
                                 TA.'parRe raw:
@@ -1913,11 +1902,11 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
         CA.'patternRecord pos completeness pas:
             outs & newEnv =
                 Dict.empty & env
-                >> Dict.for __ pas fn name, pa, dict & envX:
+                >> Dict.for __ pas fn dict & envX, name, pa:
                     out =
                         inferPattern envX uni pa @state
 
-                    Dict.insert name out dict & out.env
+                    Dict.insert dict name out & out.env
 
             patternExt as Maybe TA.TyvarId =
                 try completeness as
@@ -1925,13 +1914,13 @@ inferPattern as fn Env, Uniqueness, CA.Pattern, @State: PatternOut =
                     CA.'partial: 'just (newTyvarId @state)
 
             raw =
-                TA.'typeRecord pos patternExt (outs >> Dict.map (fn name, out: out.patternType) __)
+                TA.'typeRecord pos patternExt (outs >> Dict.map __ (fn out: out.patternType))
 
             {
             , env = newEnv
             , maybeFullAnnotation = 'nothing
             , patternType = raw
-            , typedPattern = TA.'patternRecord pos (outs >> Dict.map (fn k, o: o.typedPattern & o.patternType) __)
+            , typedPattern = TA.'patternRecord pos (outs >> Dict.map __ (fn o: o.typedPattern & o.patternType))
             }
 
 
@@ -1946,18 +1935,18 @@ inferPatternAny as fn Env, Pos, Uniqueness, Maybe Name, Maybe CA.Annotation, @St
 
             'just annotation:
                 annotatedTyvarsByName =
-                    Dict.for baseEnv.annotatedTyvarsByName annotation.tyvars fn name, { nonFn }, acc:
-                        if Dict.member name acc then
+                    Dict.for baseEnv.annotatedTyvarsByName annotation.tyvars fn acc, name, { nonFn }:
+                        if Dict.has name acc then
                             acc
                         else
-                            Dict.insert name (newTyvarId @state) acc
+                            Dict.insert acc name (newTyvarId @state)
 
                 annotatedUnivarsByOriginalId =
-                    Dict.for baseEnv.annotatedUnivarsByOriginalId annotation.univars fn id, _, acc:
-                        if Dict.member id acc then
+                    Dict.for baseEnv.annotatedUnivarsByOriginalId annotation.univars fn acc, id, _:
+                        if Dict.has id acc then
                             acc
                         else
-                            Dict.insert id (newTyvarId @state) acc
+                            Dict.insert acc id (newTyvarId @state)
 
                 # TODO should we test annotation uni vs the pattern uni (which is not available in this fn?)
                 newEnv =
@@ -1987,7 +1976,7 @@ inferPatternAny as fn Env, Pos, Uniqueness, Maybe Name, Maybe CA.Annotation, @St
 
                 # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
                 { envWithAnnotations with
-                , variables = Dict.insert ('refLocal name) variable .variables
+                , variables = Dict.insert .variables ('refLocal name) variable
                 }
 
     typedPattern =
@@ -2023,7 +2012,7 @@ checkPattern as fn Env, TA.FullType, CA.Pattern, @State: TA.Pattern & Env =
 
                         # We don't check for duplicate var names / shadowing here, it's MakeCanonical's responsibility
                         { env with
-                        , variables = Dict.insert ('refLocal name) variable .variables
+                        , variables = Dict.insert .variables ('refLocal name) variable
                         }
 
             TA.'patternAny pos { maybeName, type = expectedType } & newEnv
@@ -2069,11 +2058,11 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
 
             taPas & envF =
                 Dict.empty & env
-                >> Dict.for __ both fn name, pa & raw, acc & envX:
+                >> Dict.for __ both fn acc & envX, name, pa & raw:
                     taPa & envX0 =
                         checkPattern { envX with context = 'context_AttributeName name env.context } { raw, uni } pa @state
 
-                    Dict.insert name (taPa & raw) acc & { envX0 with context = env.context }
+                    Dict.insert acc name (taPa & raw) & { envX0 with context = env.context }
 
             TA.'patternRecord pos taPas & envF
 
@@ -2085,7 +2074,7 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
 
             envF =
                 env
-                >> Dict.for __ pas fn name, pa, envX:
+                >> Dict.for __ pas fn envX, name, pa:
                     out =
                         inferPattern envX expectedType.uni pa @state
 
@@ -2097,7 +2086,7 @@ checkPatternRecord as fn Env, Pos, TA.FullType, CA.PatternCompleteness, Dict Nam
 checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [ CA.Pattern ], @State: TA.Pattern & Env =
     fn env, pos, expectedType, usr, arguments, @state:
     insertArgsOnError as fn Env: Env =
-        List.for __ arguments fn arg, envX:
+        List.for __ arguments fn envX, arg:
             out =
                 inferPattern envX expectedType.uni arg @state
 
@@ -2129,8 +2118,8 @@ checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [ CA.Pattern ], @State
 
                 patternError pos & insertArgsOnError env
             else
-                checkArg as fn CA.Pattern & TA.ParType, Env & [ TA.Pattern ]: Env & [ TA.Pattern ] =
-                    fn arg & parType, envX & args:
+                checkArg as fn Env & [ TA.Pattern ], CA.Pattern & TA.ParType: Env & [ TA.Pattern ] =
+                    fn envX & args, arg & parType:
                         taArg & envX1 =
                             try parType as
                                 TA.'parSp full: checkPattern envX full arg @state
@@ -2139,7 +2128,7 @@ checkPatternConstructor as fn Env, Pos, TA.FullType, USR, [ CA.Pattern ], @State
                         envX1 & (taArg :: args)
 
                 (newEnv as Env) & (typedArgs as [ TA.Pattern ]) =
-                    env & [] >> List.forReversed __ (List.map2 Tuple.pair arguments requiredParTypes) checkArg
+                    env & [] >> List.forReversed __ (List.map2 arguments requiredParTypes Tuple.pair) checkArg
 
                 addEquality env pos 'why_CalledAsFunction requiredOut.raw expectedType.raw @state
 
@@ -2246,11 +2235,11 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
             newTyvarId @state & { maybeAnnotated = 'just { allowFunctions = nonFn == 'nothing, name = tyvarName } }
 
         def.maybeAnnotation
-        >> Maybe.map (fn ann: Dict.map zzzz ann.tyvars) __
-        >> Maybe.withDefault Dict.empty __
+        >> Maybe.map __ (fn ann: Dict.mapWithKey ann.tyvars zzzz)
+        >> Maybe.withDefault __ Dict.empty
 
     nameToType as Dict Name TA.RawType =
-        Dict.map (fn k, id & classes: TA.'typeVar Pos.'g id) nameToIdAndClasses
+        Dict.map nameToIdAndClasses (fn id & classes: TA.'typeVar Pos.'g id)
 
     tyvarIdToClasses as Dict TA.TyvarId TA.Tyvar =
         nameToIdAndClasses
@@ -2266,13 +2255,13 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
             'just ann:
                 ann.raw
                 >> CA.typeUnivars
-                >> Dict.map (fn annotatedId, 'none: newTyvarId @state & { annotatedId }) __
+                >> Dict.mapWithKey __ (fn annotatedId, 'none: newTyvarId @state & { annotatedId })
 
             'nothing:
                 Dict.empty
 
     originalIdToUniqueness as Dict UnivarId UnivarId =
-        originalIdToNewIdAndUnivar >> Dict.map (fn annotatedId, newId & univar: newId) __
+        originalIdToNewIdAndUnivar >> Dict.map __ (fn newId & univar: newId)
 
     freeUnivars as Dict UnivarId TA.Univar =
         originalIdToNewIdAndUnivar
@@ -2306,7 +2295,7 @@ addInstance as fn @Int, @Array Error, UMR, CA.ValueDef, Env: Env =
                     >> 'USR umr __
                     >> 'refGlobal
 
-                { env with variables = Dict.insert ref instance .variables }
+                { env with variables = Dict.insert .variables ref instance }
 
     # TODO I don't like this, need to find a better way
 
@@ -2330,7 +2319,7 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
         caConstructor.variantTypeUsr
 
     ins =
-        caConstructor.ins >> List.map (fn in: CA.'parSp { raw = in, uni = 'depends 1 }) __
+        List.map caConstructor.ins (fn in: CA.'parSp { raw = in, uni = 'depends 1 })
 
     caRaw =
         if ins == [] then
@@ -2342,16 +2331,16 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
         caRaw
         >> CA.typeTyvars
         >> Dict.keys
-        >> List.indexedMap (fn index, n: n & -index) __
+        >> List.mapWithIndex __ (fn index, n: n & -index)
 
     paramsByName as Dict Name TA.RawType =
-        List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert n (TA.'typeVar Pos.'g id) d)
+        List.for Dict.empty tyvarNamesAndIds (fn d, n & id: Dict.insert d n (TA.'typeVar Pos.'g id))
 
     raw =
         translateRawType env paramsByName Dict.empty @errors caRaw
 
     freeTyvars as Dict TA.TyvarId TA.Tyvar =
-        List.for Dict.empty tyvarNamesAndIds (fn n & id, d: Dict.insert id { maybeAnnotated = 'just { allowFunctions = 'true, name = n } } d)
+        List.for Dict.empty tyvarNamesAndIds (fn d, n & id: Dict.insert d id { maybeAnnotated = 'just { allowFunctions = 'true, name = n } })
 
     taConstructor as Instance =
         {
@@ -2361,7 +2350,7 @@ addConstructorToGlobalEnv as fn @Array Error, Name, CA.ConstructorDef, Env: Env 
         , type = toUni raw
         }
 
-    { env with constructors = Dict.insert ('USR umr name) taConstructor .constructors }
+    { env with constructors = Dict.insert .constructors ('USR umr name) taConstructor }
 
 
 expandAndInsertAlias as fn @Array Error, Env, CA.AliasDef, ByUsr ExpandedAlias: ByUsr ExpandedAlias =
@@ -2376,17 +2365,17 @@ expandAndInsertAlias as fn @Array Error, Env, CA.AliasDef, ByUsr ExpandedAlias: 
     type as TA.RawType =
         translateRawType { env with expandedAliases = aliasAccum } typeByName originalIdToNewId @errors aliasDef.type
 
-    Dict.insert aliasDef.usr { pars, type } aliasAccum
+    Dict.insert aliasAccum aliasDef.usr { pars, type }
 
 
 namedParsToIdParsAndDict as fn [ Name & Pos ]: [ TA.TyvarId ] & Dict Name TA.RawType =
     fn atPars:
     idPars =
-        atPars >> List.indexedMap (fn index, atName: -index) __
+        atPars >> List.mapWithIndex __ (fn index, atName: -index)
 
     typeByName =
         atPars
-        >> List.indexedMap (fn index, name & pos: name & TA.'typeVar pos -index) __
+        >> List.mapWithIndex __ (fn index, name & pos: name & TA.'typeVar pos -index)
         >> Dict.fromList
 
     idPars & typeByName
@@ -2394,7 +2383,7 @@ namedParsToIdParsAndDict as fn [ Name & Pos ]: [ TA.TyvarId ] & Dict Name TA.Raw
 
 getAliasDependencies as fn ByUsr aliasDef, CA.AliasDef: CA.Deps =
     fn allAliases, aliasDef:
-    aliasDef.directDeps >> Dict.filter (fn usr, _: Dict.member usr allAliases) __
+    aliasDef.directDeps >> Dict.filter (fn usr, _: Dict.has usr allAliases) __
 
 
 #
@@ -2527,7 +2516,7 @@ solveEquality as fn Env, Equality, @State: None =
             if usr1 /= usr2 then
                 addErError env head "types are incompatible2" @state
             else
-                List.indexedEach2 args2 args1 fn index, raw1, raw2:
+                List.each2WithIndex args2 args1 fn index, raw1, raw2:
                     { head with
                     , type1 = raw1
                     , type2 = raw2
@@ -2550,7 +2539,7 @@ solveEquality as fn Env, Equality, @State: None =
                         'canBeCastNo []: addErError env head "the function return type have different uniqueness" @state
                         'canBeCastNo [ id & uni, tail... ]: solveUniquenessConstraint env { context, id, pos, uni, why = "fn out" } @state
 
-                List.indexedEach2 pars1 pars2 (compareParTypes env head __ __ __ @state)
+                List.each2WithIndex pars1 pars2 (compareParTypes env head __ __ __ @state)
 
         TA.'typeRecord _ 'nothing attrs1 & TA.'typeRecord _ 'nothing attrs2:
             only1 & both & only2 =
@@ -2657,9 +2646,9 @@ occurs as fn TA.TyvarId, TA.RawType: Bool =
         occurs tyvarId __
 
     try type as
-        TA.'typeFn _ ins out: List.any (fn t: t >> TA.toRaw >> rec) ins or rec out.raw
+        TA.'typeFn _ ins out: List.any ins (fn t: t >> TA.toRaw >> rec) or rec out.raw
         TA.'typeVar _ id: id == tyvarId
-        TA.'typeExact _ usr args: List.any rec args
+        TA.'typeExact _ usr args: List.any args rec
         TA.'typeRecord _ _ attrs: Dict.any (fn k, v: rec v) attrs
         TA.'typeError: 'false
 

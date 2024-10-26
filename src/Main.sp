@@ -34,7 +34,7 @@ errorToText as fn Error: Text =
     errors =
         error
         >> Error.toFormattedText
-        >> List.map formattedToConsoleColoredText __
+        >> List.map __ formattedToConsoleColoredText
         >> Text.join "" __
 
     count =
@@ -73,17 +73,17 @@ Option state =
 parseArguments as fn [ Option state ], [ Text ], state: Result Text ([ Text ] & state) =
     fn options, args, initState:
     optionTexts & others =
-        List.partition (Text.startsWith "--" __) args
+        List.partition args (Text.startsWith "--" __)
 
-    findOption as fn Text, state: Result Text state =
-        fn optionText, state:
+    findOption as fn state, Text: Result Text state =
+        fn state, optionText:
         try Text.split "=" optionText as
 
             []:
                 'ok state
 
             optionName :: rest:
-                try List.find (fn o: o.name == optionName) options as
+                try List.find options (fn o: o.name == optionName) as
 
                     'nothing:
                         'err << "Unknown option " .. optionName
@@ -96,7 +96,7 @@ parseArguments as fn [ Option state ], [ Text ], state: Result Text ([ Text ] & 
 
     initState
     >> List.forRes __ optionTexts findOption
-    >> Result.map (Tuple.pair others __) __
+    >> Result.map __ (Tuple.pair others __)
 
 
 #
@@ -107,7 +107,7 @@ indent as fn Text: Text =
     fn s:
     s
     >> Text.split "\n" __
-    >> List.map (fn l: "  " .. l) __
+    >> List.map __ (fn l: "  " .. l)
     >> Text.join "\n" __
 
 
@@ -132,7 +132,7 @@ selftestMain as fn @IO: IO.Re None =
     allTests
     >> Test.flattenAndRun
     >> List.sortBy (fn x: order x.outcome & x.name) __
-    >> List.map (fn x: testOutcomeToText x.name x.code x.outcome) __
+    >> List.map __ (fn x: testOutcomeToText x.name x.code x.outcome)
     >> Text.join "\n" __
     >> __ .. "\n"
     >> IO.writeStdout @io __
@@ -170,7 +170,7 @@ formatMain as fn @IO, [ Text ]: IO.Re None =
         >> onOk fn formatted:
         IO.writeStdout @io formatted
     else
-        List.mapRes formatFile targets
+        List.mapRes targets formatFile
         >> onOk fn _:
         'ok 'none
 
@@ -239,7 +239,7 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
             'err "Please specify a platform name, for example: `--platform=posix`"
 
         'just value:
-            try List.find (fn p: p.name == value) availablePlatforms as
+            try List.find availablePlatforms (fn p: p.name == value) as
 
                 'nothing:
                     """
@@ -253,7 +253,7 @@ parsePlatformName as fn Maybe Text, CliState: Result Text CliState =
 
 
                     """
-                    .. (List.map (fn p: "    " .. p.name) availablePlatforms >> Text.join "\n" __)
+                    .. (List.map availablePlatforms (fn p: "    " .. p.name) >> Text.join "\n" __)
                     >> 'err
 
                 'just platform:

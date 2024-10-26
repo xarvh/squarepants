@@ -115,8 +115,8 @@ collectRequiredUsrs as fn BuildPlan, @CollectDependenciesState: Res None =
             collectRequiredUsrs env @state
 
 
-expandAndInsertType as fn @CollectDependenciesState, @Array Error, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, usr, env0:
+expandAndInsertType as fn @CollectDependenciesState, @Array Error, Compiler/TypeCheck.Env, USR: Compiler/TypeCheck.Env =
+    fn @state, @errors, env0, usr:
     try Hash.get @state.done usr as
 
         'nothing:
@@ -126,7 +126,7 @@ expandAndInsertType as fn @CollectDependenciesState, @Array Error, USR, Compiler
             try def as
 
                 'variantTypeDef variantTypeDef:
-                    { env0 with exactTypes = Dict.insert usr variantTypeDef.pars .exactTypes }
+                    { env0 with exactTypes = Dict.insert .exactTypes usr variantTypeDef.pars }
 
                 'aliasDef aliasDef:
                     { env0 with
@@ -137,8 +137,8 @@ expandAndInsertType as fn @CollectDependenciesState, @Array Error, USR, Compiler
                     env0
 
 
-typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, USR, Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, @lastUnificationVarId, usr, env0:
+typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, Compiler/TypeCheck.Env, USR: Compiler/TypeCheck.Env =
+    fn @state, @errors, @lastUnificationVarId, env0, usr:
 #    log "typechecking:" (Human/Type.usrToText env0 usr)
 
     try Hash.get @state.done usr as
@@ -153,8 +153,8 @@ typecheckDefinition as fn @CollectDependenciesState, @Array Error, @Int, USR, Co
                 _: env0
 
 
-evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ USR ], Compiler/TypeCheck.Env: Compiler/TypeCheck.Env =
-    fn @state, @errors, @lastUnificationVarId, circular, env0:
+evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, Compiler/TypeCheck.Env, [ USR ]: Compiler/TypeCheck.Env =
+    fn @state, @errors, @lastUnificationVarId, env0, circular:
         # TODO do all aliases first, then all values, otherwise Compiler/TypeCheck.translateRaw will go infinite
 
         try circular as
@@ -164,7 +164,7 @@ evaluateCircularValues as fn @CollectDependenciesState, @Array Error, @Int, [ US
                     env0
                 else
                     # Circular values
-                    List.for env0 circular fn usr, envX:
+                    List.for env0 circular fn envX, usr:
                         try Hash.get @state.done usr as
 
                             'just { with  def = 'valueDef def }:
@@ -240,7 +240,7 @@ build as fn BuildPlan: Res BuildOut =
     fn pars:
     !state as CollectDependenciesState =
         pars.requiredUsrs
-        >> List.map (fn usr: usr & usrToDependencyType usr) __
+        >> List.map __ (fn usr: usr & usrToDependencyType usr)
         >> initCollectDependenciesState
 
     collectRequiredUsrs pars @state
@@ -255,7 +255,7 @@ build as fn BuildPlan: Res BuildOut =
             'just { with  deps }: deps
 
     nodesById as Dict USR USR =
-        Hash.for_ Dict.empty @state.done (fn usr, _, dict: Dict.insert usr usr dict)
+        Hash.for_ Dict.empty @state.done (fn usr, _, dict: Dict.insert dict usr usr)
 
     circulars & orderedUsrs =
         RefHierarchy.reorder nodeToEdges nodesById
@@ -266,7 +266,7 @@ build as fn BuildPlan: Res BuildOut =
 
 #    log "CIRC" ""
 #    List.each circulars fn circ:
-#        List.map (usrToText env_ __) circ
+#        List.map circ (usrToText env_ __)
 #        >> Text.join ", " __
 #        >> log "C" __
 
@@ -337,7 +337,7 @@ build as fn BuildPlan: Res BuildOut =
     valueDefsWithDestruction as [ USR & TA.ValueDef ] =
         envF.reversedRootValueDefs
         >> List.reverse
-        >> List.map (Compiler/UniquenessCheck.updateValueDef @errors modulesByUmr __) __
+        >> List.map __ (Compiler/UniquenessCheck.updateValueDef @errors modulesByUmr __)
 
     stopOnError pars @errors
     >> onOk fn 'none:
@@ -351,7 +351,7 @@ build as fn BuildPlan: Res BuildOut =
     if missingDefs /= [] then
         [
         , "Cannot find definitions for:"
-        , List.map (Human/Type.usrToText CoreDefs.coreModule __) missingDefs...
+        , List.map missingDefs (Human/Type.usrToText CoreDefs.coreModule __)...
         ]
         >> Error.'raw
         >> 'err
@@ -364,32 +364,29 @@ build as fn BuildPlan: Res BuildOut =
 
     translateDef as fn USR & TA.ValueDef: Maybe EA.GlobalDefinition =
         fn usr & def:
-        Maybe.map
-            (fn body:
-                 {
-                 , deps = def.directDeps
-                 , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
-                 , freeTyvars = def.freeTyvars
-                 , freeUnivars = def.freeUnivars
-                 , type = def.type.raw
-                 , usr = EA.translateUsr usr
-                 }
-            )
-            def.body
+        Maybe.map def.body fn body:
+            {
+            , deps = def.directDeps
+            , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
+            , freeTyvars = def.freeTyvars
+            , freeUnivars = def.freeUnivars
+            , type = def.type.raw
+            , usr = EA.translateUsr usr
+            }
 
     rootValues as [ EA.GlobalDefinition ] =
-        List.filterMap translateDef valueDefsWithDestruction
+        List.filterMap valueDefsWithDestruction translateDef
 
     natives as [ USR ] =
         valueDefsWithDestruction
-        >> List.filter (fn usr & def: def.body == 'nothing) __
-        >> List.map Tuple.first __
+        >> List.filter __ (fn usr & def: def.body == 'nothing)
+        >> List.map __ Tuple.first
 
     #
     # Constructors
     #
     constructors as [ USR & TA.RawType ] =
-        Dict.toList (Dict.map (fn k, v: v.type.raw) envF.constructors)
+        Dict.toList (Dict.map envF.constructors (fn v: v.type.raw))
 
     #
     # Done!

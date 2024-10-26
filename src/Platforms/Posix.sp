@@ -54,7 +54,7 @@ makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
         #log "Emitting JS..." ""
 
         jaStatements
-        >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+        >> List.map __ (Targets/Javascript/JsToText.emitStatement 0 __)
         >> Text.join "\n\n" __
 
     natives =

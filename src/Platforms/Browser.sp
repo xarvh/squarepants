@@ -42,7 +42,7 @@ compile as fn [ USR & Text ], Self.LoadPars: Text =
     , platformOverrides
     }
     >> Targets/Javascript/EmittableToJs.translateAll
-    >> List.map (Targets/Javascript/JsToText.emitStatement 0 __) __
+    >> List.map __ (Targets/Javascript/JsToText.emitStatement 0 __)
     >> Text.join "\n\n" __
 
 

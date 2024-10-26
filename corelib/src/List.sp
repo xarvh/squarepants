@@ -1,12 +1,12 @@
-any as fn fn a: Bool, [ a ]: Bool =
-    fn fun, list:
+any as fn [ a ], (fn a: Bool): Bool =
+    fn list, fun:
     try list as
         []: 'false
-        [ h, t... ]: if fun h then 'true else any fun t
+        [ h, t... ]: if fun h then 'true else any t fun
 
 
-all as fn fn a: Bool, [ a ]: Bool =
-    fn fun, list:
+all as fn [ a ], (fn a: Bool): Bool =
+    fn list, fun:
     try list as
 
         []:
@@ -14,13 +14,13 @@ all as fn fn a: Bool, [ a ]: Bool =
 
         [ h, t... ]:
             if fun h then
-                all fun t
+                all t fun
             else
                 'false
 
 
-find as fn fn a: Bool, [ a ]: Maybe a =
-    fn test, list:
+find as fn [ a ], (fn a: Bool): Maybe a =
+    fn list, test:
     try list as
 
         []:
@@ -30,11 +30,11 @@ find as fn fn a: Bool, [ a ]: Maybe a =
             if test h then
                 'just h
             else
-                find test t
+                find t test
 
 
-findMap as fn fn a: Maybe b, [ a ]: Maybe b =
-    fn f, list:
+findMap as fn [ a ], (fn a: Maybe b): Maybe b =
+    fn list, f:
     try list as
 
         []:
@@ -43,11 +43,10 @@ findMap as fn fn a: Maybe b, [ a ]: Maybe b =
         [ h, t... ]:
             try f h as
                 'just r: 'just r
-                'nothing: findMap f t
+                'nothing: findMap t f
 
 
-member as fn a, [ a ]: Bool =
-    # TODO with a NonFunction =
+contains as fn a, [ a ]: Bool =
     fn a, list:
     try list as
 
@@ -58,49 +57,45 @@ member as fn a, [ a ]: Bool =
             if a == h then
                 'true
             else
-                member a t
+                contains a t
 
 
-sort as fn [ a ]: [ a ] =
-    # TODO with a NonFunction =
-    sortBy identity __
-
-
-sortBy as fn fn a: b, [ a ]: [ a ] with b NonFunction =
+# TODO flip arguments, rename to `sort`
+sortBy as fn (fn a: b), [ a ]: [ a ] with b NonFunction =
     this_is_sp_native
 
 
-indexBy as fn fn a: key, [ a ]: Dict key a with key NonFunction =
-    fn getIndex, list:
-    for Dict.empty list (fn i, a: Dict.insert (getIndex i) i a)
+indexBy as fn [ a ], (fn a: key): Dict key a with key NonFunction =
+    fn list, getIndex:
+    for Dict.empty list (fn a, i: Dict.insert a (getIndex i) i)
 
 
-for as fn state, [ item ], fn item, state: state: state =
+for as fn state, [ item ], (fn state, item: state): state =
     fn init, aList, function:
     try aList as
         []: init
-        h :: tail: for (function h init) tail function
+        [ h, tail... ]: for (function init h) tail function
 
 
-for2 as fn state, [ a ], [ b ], fn a, b, state: state: state =
+for2 as fn state, [ a ], [ b ], (fn state, a, b: state): state =
     fn init, aList, bList, function:
     try aList & bList as
         [] & _: init
         _ & []: init
-        [ headA, tailA... ] & [ headB, tailB... ]: for2 (function headA headB init) tailA tailB function
+        [ headA, tailA... ] & [ headB, tailB... ]: for2 (function init headA headB) tailA tailB function
 
 
-indexedFor as fn state, [ item ], fn Int, item, state: state: state =
+forWithIndex as fn state, [ item ], (fn state, Int, item: state): state =
     fn init, aList, function:
-    for (0 & init) aList (fn item, index & accum: index + 1 & function index item accum) >> Tuple.second
+    for (0 & init) aList (fn index & accum, item: index + 1 & function accum index item) >> Tuple.second
 
 
-indexedFor2 as fn state, [ a ], [ b ], fn Int, a, b, state: state: state =
+for2WithIndex as fn state, [ a ], [ b ], (fn state, Int, a, b: state): state =
     fn init, aList, bList, function:
-    for2 (0 & init) aList bList (fn a, b, index & accum: index + 1 & function index a b accum) >> Tuple.second
+    for2 (0 & init) aList bList (fn index & accum, a, b: index + 1 & function accum index a b) >> Tuple.second
 
 
-forReversed as fn state, [ item ], fn item, state: state: state =
+forReversed as fn state, [ item ], (fn state, item: state): state =
     fn init, list, f:
     foldrHelper as fn state, Int, [ item ]: state =
         fn acc, ctr, ls:
@@ -113,19 +108,19 @@ forReversed as fn state, [ item ], fn item, state: state: state =
                 try r1 as
 
                     []:
-                        f a acc
+                        f acc a
 
                     b :: r2:
                         try r2 as
 
                             []:
-                                f a (f b acc)
+                                f (f acc b) a
 
                             c :: r3:
                                 try r3 as
 
                                     []:
-                                        f a (f b (f c acc))
+                                        f (f (f acc c) b) a
 
                                     d :: r4:
                                         res =
@@ -134,29 +129,23 @@ forReversed as fn state, [ item ], fn item, state: state: state =
                                             else
                                                 foldrHelper acc (ctr + 1) r4
 
-                                        f a (f b (f c (f d res)))
+                                        f (f (f (f res d) c) b) a
 
     foldrHelper init 0 list
 
 
-forReversed2 as fn state, [ a ], [ b ], fn a, b, state: state: state =
-    fn init, listA, listB, f:
-    # TODO optimize
-    for2 init (reverse listA) (reverse listB) f
-
-
 length as fn [ a ]: Int =
     fn list:
-    for 0 list (fn _, a: a + 1)
+    for 0 list (fn a, _: a + 1)
 
 
-map as fn fn a: b, [ a ]: [ b ] =
-    fn f, list:
-    forReversed [] list (fn x, acc: f x :: acc)
+map as fn [ a ], (fn a: b): [ b ] =
+    fn list, f:
+    forReversed [] list (fn acc, x: f x :: acc)
 
 
-map2 as fn fn a, b: c, [ a ], [ b ]: [ c ] =
-    fn f, aa, bb:
+map2 as fn [ a ], [ b ], (fn a, b: c): [ c ] =
+    fn aa, bb, f:
     rec as fn [ c ], [ a ], [ b ]: [ c ] =
         fn accum, ax, bx:
         try ax & bx as
@@ -166,15 +155,15 @@ map2 as fn fn a, b: c, [ a ], [ b ]: [ c ] =
     rec [] aa bb
 
 
-mapRes as fn fn a: Result e b, [ a ]: Result e [ b ] =
-    fn f, list:
+mapRes as fn [ a ], (fn a: Result e b): Result e [ b ] =
+    fn list, f:
     fun =
-        fn a, acc: Result.map (fn b: [ b, acc... ]) (f a)
+        fn acc, a: Result.map (f a) (fn b: [ b, acc... ])
 
-    forRes [] list fun >> Result.map reverse __
+    forRes [] list fun >> Result.map __ reverse
 
 
-forRes as fn accum, [ item ], fn item, accum: Result error accum: Result error accum =
+forRes as fn accum, [ item ], (fn accum, item: Result error accum): Result error accum =
     fn accum, ls, f:
     try ls as
 
@@ -182,7 +171,7 @@ forRes as fn accum, [ item ], fn item, accum: Result error accum: Result error a
             'ok accum
 
         h :: t:
-            try f h accum as
+            try f accum h as
                 'err x: 'err x
                 'ok newAccum: forRes newAccum t f
 
@@ -201,8 +190,8 @@ range as fn Int, Int: [ Int ] =
     rec [] high
 
 
-indexedMap as fn fn Int, a: b, [ a ]: [ b ] =
-    fn f, aa:
+mapWithIndex as fn [ a ], (fn Int, a: b): [ b ] =
+    fn aa, f:
     rec as fn [ b ], Int, [ a ]: [ b ] =
         fn accum, n, list:
         try list as
@@ -212,8 +201,8 @@ indexedMap as fn fn Int, a: b, [ a ]: [ b ] =
     rec [] 0 aa
 
 
-indexedMap2 as fn fn Int, a, b: c, [ a ], [ b ]: [ c ] =
-    fn f, aaa, bbb:
+map2WithIndex as fn [ a ], [ b ], (fn Int, a, b: c): [ c ] =
+    fn aaa, bbb, f:
     rec as fn [ c ], Int, [ a ], [ b ]: [ c ] =
         fn accum, n, aa, bb:
         try aa & bb as
@@ -224,10 +213,10 @@ indexedMap2 as fn fn Int, a, b: c, [ a ], [ b ]: [ c ] =
 
 
 append as fn [ a ], [ a ]: [ a ] =
-    fn xs, ys:
+    fn ys, xs:
     try ys as
         []: xs
-        _: forReversed ys xs Core.'cons
+        _: forReversed ys xs (fn a, b: Core.'cons b a)
 
 
 concat as fn [ [ a ] ]: [ a ] =
@@ -235,15 +224,15 @@ concat as fn [ [ a ] ]: [ a ] =
     forReversed [] lists append
 
 
-concatMap as fn fn a: [ b ], [ a ]: [ b ] =
-    fn f, list:
-    concat << map f list
+mapConcat as fn [ a ], (fn a: [ b ]): [ b ] =
+    fn list, f:
+    concat << map list f
 
 
-partition as fn fn item: Bool, [ item ]: [ item ] & [ item ] =
-    fn f, ls:
+partition as fn [ item ], (fn item: Bool): [ item ] & [ item ] =
+    fn ls, f:
     [] & []
-    >> forReversed __ ls fn item, true & false:
+    >> forReversed __ ls fn true & false, item:
         if f item then
             (item :: true) & false
         else
@@ -265,6 +254,7 @@ last as fn [ a ]: Maybe a =
         h :: t: last t
 
 
+# TODO flip params
 take as fn Int, [ a ]: [ a ] =
     takeFast 0 __ __
 
@@ -317,7 +307,7 @@ takeReverse as fn Int, [ a ], [ a ]: [ a ] =
             x :: xs: takeReverse (n - 1) xs (Core.'cons x kept)
 
 
-takeWhile as fn fn item: Bool, [ item ]: [ item ] =
+takeWhile as fn (fn item: Bool), [ item ]: [ item ] =
     fn test, its:
     rec as fn [ item ], [ item ]: [ item ] =
         fn accum, list:
@@ -335,15 +325,15 @@ takeWhile as fn fn item: Bool, [ item ]: [ item ] =
     rec [] its
 
 
-filter as fn fn item: Bool, [ item ]: [ item ] =
-    fn f, ls:
-    forReversed [] ls (fn item, acc: if f item then item :: acc else acc)
+filter as fn [ item ], (fn item: Bool): [ item ] =
+    fn ls, f:
+    forReversed [] ls (fn acc, item: if f item then item :: acc else acc)
 
 
-filterMap as fn fn a: Maybe b, [ a ]: [ b ] =
-    fn f, la:
-    update as fn a, [ b ]: [ b ] =
-        fn a, acc:
+filterMap as fn [ a ], (fn a: Maybe b): [ b ] =
+    fn la, f:
+    update as fn[ b ], a: [ b ] =
+        fn acc, a:
         try f a as
             'just b: b :: acc
             'nothing: acc
@@ -351,8 +341,8 @@ filterMap as fn fn a: Maybe b, [ a ]: [ b ] =
     forReversed [] la update
 
 
-mapFirst as fn fn a: Maybe b, [ a ]: Maybe b =
-    fn f, ls:
+mapFirst as fn [ a ], (fn a: Maybe b): Maybe b =
+    fn ls, f:
     try ls as
 
         []:
@@ -363,11 +353,11 @@ mapFirst as fn fn a: Maybe b, [ a ]: Maybe b =
                 f h
 
             try r as
-                'nothing: mapFirst f tail
+                'nothing: mapFirst tail f
                 _: r
 
 
-each as fn [ a ], fn a: b: None =
+each as fn [ a ], (fn a: b): None =
     fn ls, f:
     try ls as
 
@@ -380,8 +370,8 @@ each as fn [ a ], fn a: b: None =
             each tail f
 
 
-indexedEach2 as fn [ a ], [ b ], fn Int, a, b: None: None =
-    rec as fn Int, [ a ], [ b ], fn Int, a, b: None: None =
+each2WithIndex as fn [ a ], [ b ], (fn Int, a, b: None): None =
+    rec as fn Int, [ a ], [ b ], (fn Int, a, b: None): None =
         fn index, aa, bb, f:
         try aa & bb as
 
@@ -398,7 +388,7 @@ indexedEach2 as fn [ a ], [ b ], fn Int, a, b: None: None =
 
 reverse as fn [ a ]: [ a ] =
     fn aList:
-    for [] aList Core.'cons
+    for [] aList (fn a, b: Core.'cons b a)
 
 
 repeat as fn Int, a: [ a ] =
@@ -465,8 +455,8 @@ intersperse as fn a, [ a ]: [ a ] =
     rec __ __ []
 
 
-partitionWhile as fn fn item: Bool, [ item ]: [ item ] & [ item ] =
-    fn f, xs:
+partitionWhile as fn [ item ], (fn item: Bool): [ item ] & [ item ] =
+    fn xs, f:
     rec =
         fn acc, rest:
         try rest as

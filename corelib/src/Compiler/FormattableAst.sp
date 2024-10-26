@@ -155,7 +155,7 @@ BinopChain =
 
 binopChainExpressions as fn BinopChain: [ Expression ] =
     fn head & tuples:
-    head :: List.map Tuple.second tuples
+    head :: List.map tuples Tuple.second
 
 
 binopChainReverse as fn BinopChain: BinopChain =
