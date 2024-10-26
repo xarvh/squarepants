@@ -211,6 +211,7 @@ module =
         merge
         onlyBothOnly
         map
+        mapWithKey
         mapRes
         mapKeys
         each
@@ -218,6 +219,7 @@ module =
         forRes
         forReversed
         filter
+        filterWithKey
         partition
         any
         keys

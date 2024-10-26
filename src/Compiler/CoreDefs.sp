@@ -602,7 +602,7 @@ insert as fn USR, CA.RawType, [ Name ], Dict Name CA.ValueDef: Dict Name CA.Valu
     tyvars as Dict Name { nonFn as Maybe Pos } =
         raw
         >> CA.typeTyvars __
-        >> Dict.map __ (fn n, pos: { nonFn = if Set.member n nonFn then 'just Pos.'n else 'nothing })
+        >> Dict.mapWithKey __ (fn n, pos: { nonFn = if Set.member n nonFn then 'just Pos.'n else 'nothing })
 
     {
     , directDeps = Compiler/MakeCanonical.typeDeps Dict.empty raw

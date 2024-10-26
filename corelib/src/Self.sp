@@ -76,7 +76,7 @@ toCaModules as fn [ Self ]: Dict UMR CA.Module =
 
                     directDeps =
                         # TODO split between "annotation dependencies" and "definition dependencies"?
-                        Dict.filter (fn k, v: v == Meta.'typeDependency) def.directDeps
+                        Dict.filter (__ == Meta.'typeDependency) def.directDeps
 
                     { mod0 with valueDefs = Dict.insert .valueDefs name { def with directDeps, maybeBody } }
 

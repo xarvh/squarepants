@@ -328,7 +328,7 @@ translateMaybeAnnotation as fn Env, Maybe FA.Expression: Res (Maybe CA.Annotatio
             translateRawType env.ro faType
             >> onOk fn raw:
             tyvars =
-                CA.typeTyvars raw >> Dict.map __ (fn tyvarName, pos: { nonFn = Dict.get tyvarName env.nonFn })
+                CA.typeTyvars raw >> Dict.mapWithKey __ (fn tyvarName, pos: { nonFn = Dict.get tyvarName env.nonFn })
 
             { raw, tyvars, univars = CA.typeUnivars raw }
             >> 'just

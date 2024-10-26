@@ -254,7 +254,7 @@ join as fn Dict key v, Dict key v: Dict key v with key NonFunction =
 
 intersect as fn Dict key a, Dict key b: Dict key a with key NonFunction =
     fn t1, t2:
-    filter (fn k, _: has k t2) t1
+    filterWithKey (fn k, _: has k t2) t1
 
 
 diff as fn Dict key a, Dict key b: Dict key a with key NonFunction =
@@ -306,28 +306,18 @@ onlyBothOnly as fn Dict key a, Dict key b: Dict key a & Dict key (a & b) & Dict 
 
 # TRANSFORM
 
-map as fn Dict k a, (fn k, a: b): Dict k b =
+map as fn Dict k a, (fn a: b): Dict k b =
     fn dict, func:
     try dict as
         'empty: 'empty
-        'node color key value left right: 'node color key (func key value) (map left func) (map right func)
+        'node color key value left right: 'node color key (func value) (map left func) (map right func)
 
 
-mapRes as fn Dict k a, (fn k, a: Result e b): Result e (Dict k b) =
+mapWithKey as fn Dict k a, (fn k, a: b): Dict k b =
     fn dict, func:
     try dict as
-
-        'empty:
-            'ok 'empty
-
-        'node color key value left right:
-            func key value
-            >> Result.onOk fn one:
-            mapRes left func
-            >> Result.onOk fn two:
-            mapRes right func
-            >> Result.onOk fn three:
-            'ok << 'node color key one two three
+        'empty: 'empty
+        'node color key value left right: 'node color key (func key value) (mapWithKey left func) (mapWithKey right func)
 
 
 mapKeys as fn (fn k: j), Dict k a: Dict j a =
@@ -379,7 +369,12 @@ forReversed as fn b, Dict k v, (fn k, v, b: b): b =
         'node _ key value left right: forReversed (func key value (forReversed acc right func)) left func
 
 
-filter as fn (fn key, v: Bool), Dict key v: Dict key v with key NonFunction =
+filter as fn (fn v: Bool), Dict key v: Dict key v with key NonFunction =
+    fn isGood, dict:
+    for empty dict (fn d, k, v: if isGood v then insert d k v else d)
+
+
+filterWithKey as fn (fn key, v: Bool), Dict key v: Dict key v with key NonFunction =
     fn isGood, dict:
     for empty dict (fn d, k, v: if isGood k v then insert d k v else d)
 

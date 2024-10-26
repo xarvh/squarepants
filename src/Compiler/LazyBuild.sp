@@ -386,7 +386,7 @@ build as fn BuildPlan: Res BuildOut =
     # Constructors
     #
     constructors as [ USR & TA.RawType ] =
-        Dict.toList (Dict.map envF.constructors (fn k, v: v.type.raw))
+        Dict.toList (Dict.map envF.constructors (fn v: v.type.raw))
 
     #
     # Done!

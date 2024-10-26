@@ -288,7 +288,7 @@ consumeInEnv as fn Dict Name Pos, Env: Env =
                 'nothing: variable
                 'just pos: { variable with mode = 'unique << 'consumedAt pos }
 
-    { env with variables = Dict.map .variables translate }
+    { env with variables = Dict.mapWithKey .variables translate }
 
 
 requireInEnv as fn [ Name ], Required, Env: Env =
@@ -327,8 +327,8 @@ addPatternToEnv as fn @Array Error, TA.Pattern, Env: [ Name ] & Dict Name Pos & 
 
     uniques =
         names
-        >> Dict.filter (fn n, s: s.type.uni /= 'imm) __
-        >> Dict.map __ (fn n, s: s.pos)
+        >> Dict.filter (fn s: s.type.uni /= 'imm) __
+        >> Dict.map __ (fn s: s.pos)
 
     Dict.keys names & uniques & localEnv
 
@@ -619,13 +619,7 @@ doExpression as fn Env, @Array Error, TA.Expression: UniOut TA.Expression =
                         doExpression env @errors value
 
                     consumedTwice =
-                        Dict.merge
-                            (fn k, v, d: d)
-                            (fn k, a, b, d: Dict.insert d k (a & b))
-                            (fn k, v, d: d)
-                            spent
-                            doneSoFar.spent
-                            Dict.empty
+                        Dict.merge (fn k, v, d: d) (fn k, a, b, d: Dict.insert d k (a & b)) (fn k, v, d: d) spent doneSoFar.spent Dict.empty
 
                     Dict.each consumedTwice fn n, p1 & p2:
                         errorReferencingConsumedVariable env n p1 p2 @errors
@@ -803,7 +797,7 @@ doFn as fn Env, Pos, @Array Error, [ TA.Parameter ], TA.Expression, TA.FullType:
     #
     required as Required =
         doneBody.recycled
-        >> Dict.map __ (fn k, usedAt: { fnPos = pos, usedAt })
+        >> Dict.map __ (fn usedAt: { fnPos = pos, usedAt })
         >> Dict.join doneBody.required __
         >> Dict.diff __ parsToBeRecycled
 
