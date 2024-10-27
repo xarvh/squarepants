@@ -106,7 +106,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ (fn d, usr & override: Dict.insert d (EA.translateUsr usr) override)
+    >> List.for Dict.empty __ (fn d, usr & override: Dict.insert d (todo "EA.translateUsr usr") override)
 
 
 unaryPlus as Override =
@@ -188,13 +188,13 @@ loadOverride as Override =
 
                 [
                 , loadPars
-                , EA.'argumentSpend { with  raw = TA.'typeFn _ [ TA.'parSp { with  raw = compiledType } ] _ } _
+                , EA.'argumentSpend { with  raw = EA.'typeFn [ EA.'parSp { with  raw = compiledType } ] _ } _
                 ]:
                     !hash =
                         Hash.fromList []
 
                     compiledType
-                    >> TA.normalizeType @hash __
+                    #>> TA.normalizeType @hash __
                     # TODO: This is a horrid workaround, we should use a dedicated function or a decoder, or even better, unify the types
                     # Actually no, fuck unification, we can't have tyvars!
                     >> toHuman
@@ -244,13 +244,12 @@ accessAttrs as fn [ Text ], JA.Expr: JA.Expr =
 
 translateName as fn Name: Text =
     __
-    >> EA.translateName
+    >> todo "EA.translateName"
     >> "$" .. __
 
 
-translateUsrToText as fn USR: Text =
-    fn usr:
-    EA.translateUsr usr >> _usrToText
+translateUsrToText as fn EA.TranslatedUsr: Text =
+    _usrToText
 
 
 _usrToText as fn EA.TranslatedUsr: Text =
@@ -587,10 +586,13 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
             >> 'inline
 
 
-translateConstructorDef as fn USR & TA.RawType: JA.Statement =
-    fn usr & taType:
-    'USR umr nameWithApostrophe =
-        usr
+translateConstructorDef as fn EA.TranslatedUsr & EA.RawType: JA.Statement =
+    fn tusr & taType:
+    #
+    nameWithApostrophe as Text =
+        tusr
+        >> List.last
+        >> Maybe.withDefault __ "this should not happen"
 
     # `(($1, $2, $3) => [ "theConstructorName", $1, $2, $3, ... ])`
     arrayHead =
@@ -599,7 +601,7 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
     definitionBody =
         try taType as
 
-            TA.'typeFn _ pars out:
+            EA.'typeFn pars out:
                 argNames as [ Text ] =
                     List.mapWithIndex pars (fn index, name: constructorArgumentName (index + 1))
 
@@ -610,7 +612,7 @@ translateConstructorDef as fn USR & TA.RawType: JA.Statement =
             _:
                 JA.'array [ arrayHead ]
 
-    JA.'define 'false (translateUsrToText usr) definitionBody
+    JA.'define 'false (translateUsrToText tusr) definitionBody
 
 
 translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
@@ -622,9 +624,9 @@ translateDef as fn Env, EA.GlobalDefinition: Maybe JA.Statement =
 
 TranslateAllPars =
     {
-    , constructors as [ USR & TA.RawType ]
+    , constructors as [ EA.TranslatedUsr & EA.RawType ]
     , eaDefs as [ EA.GlobalDefinition ]
-    , platformOverrides as [ USR & Text ]
+    , platformOverrides as [ EA.TranslatedUsr & Text ]
     }
 
 
@@ -639,8 +641,8 @@ translateAll as fn TranslateAllPars: [ JA.Statement ] =
     env as Env =
         {
         , overrides =
-            List.for (coreOverrides 'none) platformOverrides fn d, usr & runtimeName:
-                Dict.insert d (EA.translateUsr usr) (function runtimeName)
+            List.for (coreOverrides 'none) platformOverrides fn d, tUsr & runtimeName:
+                Dict.insert d tUsr (function runtimeName)
         }
 
     jaStatements as [ JA.Statement ] =

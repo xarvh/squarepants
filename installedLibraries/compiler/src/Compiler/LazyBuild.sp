@@ -371,7 +371,7 @@ build as fn BuildPlan: Res BuildOut =
             , freeTyvars = def.freeTyvars
             , freeUnivars = def.freeUnivars
             , type = def.type.raw
-            , usr = EA.translateUsr usr
+            , usr = todo "EA.translateUsr usr"
             }
 
     rootValues as [ EA.GlobalDefinition ] =

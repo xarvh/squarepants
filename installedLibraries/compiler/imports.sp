@@ -38,18 +38,10 @@ sourceDir =
        path = Types/Ast
        importAs = Ast
        globals =
-          Name
           Ref
-          UnivarId
-          Uniqueness
           'refLocal
           'refGlobal
           'refPlaceholder
-          'uni
-          'imm
-          'depends
-          toImm
-          toUni
 
     module =
        path = Types/TypedAst
@@ -120,6 +112,15 @@ library =
     module =
        path = Compiler/EmittableAst
        importAs = EA
+       globals =
+          Name
+          'uni
+          'imm
+          'depends
+          UnivarId
+          Uniqueness
+          toImm
+          toUni
 
     module =
        path = Core

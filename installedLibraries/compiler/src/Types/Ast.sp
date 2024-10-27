@@ -1,11 +1,4 @@
 #
-# The name of a variable, type, attribute or "visibleAs" module name
-#
-Name =
-    Text
-
-
-#
 # A reference to a defined variable
 #
 var Ref =

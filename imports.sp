@@ -85,18 +85,10 @@ library =
        path = Types/Ast
        importAs = Ast
        globals =
-          Name
           Ref
-          UnivarId
-          Uniqueness
           'refLocal
           'refGlobal
           'refPlaceholder
-          'uni
-          'imm
-          'depends
-          toImm
-          toUni
 
     module =
        path = Types/TypedAst
@@ -153,6 +145,7 @@ library =
        path = Compiler/Error
        importAs = Error
        globals =
+          Error
           Res
 
     module =
@@ -166,9 +159,10 @@ library =
        path = Compiler/MakeCanonical
 
     module =
+       path = Compiler/MakeEmittable
+
+    module =
        path = Human/Format
-
-
 
 
 #
@@ -180,6 +174,16 @@ library =
     module =
        path = Compiler/EmittableAst
        importAs = EA
+       globals =
+          Name
+          UnivarId
+          Uniqueness
+          'uni
+          'imm
+          'depends
+          toImm
+          toUni
+
 
     # unlike sourceDirs, libraries don't automatically expose all available modules
     module =
@@ -270,3 +274,4 @@ library =
 
     module =
         path = Self
+

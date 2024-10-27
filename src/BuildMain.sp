@@ -74,9 +74,9 @@ loadCaModule as fn LoadCaModulePars, USR: Res CA.Module =
     fn pars, 'USR umr name:
     if umr == CoreDefs.umr then
         'ok CoreDefs.coreModule
+    else
 #    else if umr == pars.buildInfoModule.umr then
 #        'ok pars.buildInfoModule
-    else
         'UMR rootDirectory id modulePath =
             umr
 
@@ -226,7 +226,7 @@ updateSourceDir as fn [ Text ], ImportsFile.SourceDir: ImportsFile.SourceDir =
     List.for orig fileNames insertModuleName
 
 
-scanSourceDirs as fn @IO, fn Text, Text: Int, Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imports =
+scanSourceDirs as fn @IO, (fn Text, Text: Int), Meta.RootPaths, Meta.ImportsPath, ImportsFile: Res Imports =
     fn @io, getSourceDirId, rootPaths, importsPath, importsFile:
     Meta.'importsPath root importsDir =
         importsPath
@@ -345,7 +345,7 @@ loadImports as fn @IO, @State, Meta.RootPaths, Meta.ImportsPath: Res Imports =
             'ok imports
 
 
-searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
+searchAncestorDirectories as fn @IO, (fn Bool & Text: Bool), Text: Maybe Text =
     fn @io, isWantedFile, searchDir:
     try IO.readDir @io searchDir as
 
@@ -368,6 +368,40 @@ searchAncestorDirectories as fn @IO, fn Bool & Text: Bool, Text: Maybe Text =
 #
 # Compile
 #
+
+getPlatformUmr as fn @IO, @State, Dict Name Meta.Location, Name: Res UMR =
+    fn @io, @state, platformModuleLocations, modulePath:
+    try Dict.get modulePath platformModuleLocations as
+
+        'nothing:
+            [ "no " .. modulePath .. "in loaded platform." ]
+            >> Error.'raw
+            >> 'err
+
+        'just location:
+            try location as
+
+                Meta.'locationSourceDir umr:
+                    'ok umr
+
+                Meta.'locationLibrary libraryImportsPath modulePath2:
+                    loadImports @io @state rootPaths libraryImportsPath
+                    >> onOk fn libraryImports:
+                        try Dict.get modulePath libraryImports.modulePathToLocation as
+
+                            'nothing:
+                                "Platform bug: no module " .. modulePath .. " the library imports for platform " .. pars.platform.name
+                                >> Error.'raw
+                                >> 'err
+
+                            'just (Meta.'locationLibrary _ _):
+                                "Platform bug: platform wants the UMR of a library module: " .. modulePath
+                                >> Error.'raw
+                                >> 'err
+
+                            'just (Meta.'locationSourceDir umr):
+                                'ok umr
+
 
 CompileMainPars =
     {
@@ -457,39 +491,25 @@ compileMain as fn @IO, CompileMainPars: Res None =
     Dict.get pars.platform.name projectImports.platforms
     >> Maybe.toResult __ (Error.'raw [ "project imports.sp does not specify a '" .. pars.platform.name .. "' platform." ])
     >> onOk fn platformModuleLocations:
-    # TODO properly collect or return errors instead of crashing
-    makePlatformUmr as fn Name: UMR =
-        fn modulePath:
-        try Dict.get modulePath platformModuleLocations as
+    #
 
-            'nothing:
-                todo << "no " .. modulePath .. "in loaded platform."
+    xxx =
+        fn { modulePath, symbolName }:
+        getPlatformUmr @io @state platformModuleLocations modulePath
+        #
+        >> Result.map ('usr __ symbolName >> Compiler/MakeEmittable.translateUsr)
 
-            'just location:
-                try location as
-
-                    Meta.'locationSourceDir umr:
-                        umr
-
-                    Meta.'locationLibrary libraryImportsPath modulePath2:
-                        try loadImports @io @state rootPaths libraryImportsPath as
-
-                            'err err:
-                                todo (toHuman err)
-
-                            'ok libraryImports:
-                                try Dict.get modulePath libraryImports.modulePathToLocation as
-                                    'nothing: todo << "Platform bug: no module " .. modulePath .. " the library imports for platform " .. pars.platform.name
-                                    'just (Meta.'locationLibrary _ _): todo << "Platform bug: platform wants the UMR of a library module: " .. modulePath
-                                    'just (Meta.'locationSourceDir umr): umr
-
+    pars.platform.extraRequiredUsrs
+    >> List.mapRes xxx
+    >> onOk fn extraRequiredUsrs:
     #
     # Compile!
     #
     loadCaModulePars as LoadCaModulePars =
         {
 #        , buildInfoModule = buildInfoModule pars.platform
-        , idToDirs = idToDirs @state __
+        , idToDirs =
+            idToDirs @state __
         , loadExports = loadExports @io @state rootPaths __
         , loadImports = loadImports @io @state rootPaths __
         , readFile = IO.readFile @io __
@@ -499,7 +519,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
     {
     , loadCaModule = loadCaModule loadCaModulePars __
     , projectImports
-    , requiredUsrs = [ entryUsr, pars.platform.extraRequiredUsrs makePlatformUmr... ]
+    , requiredUsrs = [ entryUsr, extraRequiredUsrs... ]
     }
     >> Compiler/LazyBuild.build
     >> onOk fn { constructors, natives, rootValues }:
@@ -510,7 +530,7 @@ compileMain as fn @IO, CompileMainPars: Res None =
 
     # Should be the last
     _entryUsr as EA.TranslatedUsr =
-        EA.translateUsr entryUsr
+        Compiler/MakeEmittable.translateUsr entryUsr
 
     type =
         try List.find rootValues (fn rv: rv.usr == _entryUsr) as

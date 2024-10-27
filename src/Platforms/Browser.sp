@@ -3,7 +3,7 @@ platform as Platform =
     , compile
     , defaultImportsFile
     , defaultOutputName = "index.js"
-    , extraRequiredUsrs
+    , extraRequiredUsrs = [ { modulePath = "VirtualDom", symbolName = "updateDomNode" } ]
     # TODO maybe "makeExecutable" should be a function instead? It is really annoying that everything becomes a function even when it's not needed.
     , makeExecutable
     , name = "browser"
@@ -21,21 +21,14 @@ defaultImportsFile as ImportsFile =
         ]
 
 
-virtualDomUsr as fn Platform.MakeUmr: fn Name: USR =
-    fn makePlatformUmr:
-    'USR (makePlatformUmr "VirtualDom") __
-
-
-extraRequiredUsrs as fn Platform.MakeUmr: [ USR ] =
-    fn makePlatformUmr:
-
-    [ (virtualDomUsr makePlatformUmr) "updateDomNode" ]
+virtualDomUsr as fn Platform.GetPlatformsTranslatedUsr: fn Name: EA.TranslatedUsr =
+    fn getPlatformsTranslatedUsr:
+    getPlatformsTranslatedUsr "VirtualDom" __
 
 
 # TODO move this in Targets/Javascript ?
-compile as fn [ USR & Text ], Self.LoadPars: Text =
+compile as fn [ EA.TranslatedUsr & Text ], Self.LoadPars: Text =
     fn platformOverrides, loadPars:
-
     {
     , constructors = loadPars.constructors
     , eaDefs = loadPars.defs
@@ -46,13 +39,11 @@ compile as fn [ USR & Text ], Self.LoadPars: Text =
     >> Text.join "\n\n" __
 
 
-makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
-    fn makePlatformUmr:
+makeExecutable as fn Platform.GetPlatformsTranslatedUsr, Self.LoadPars: Text =
+    fn getPlatformsTranslatedUsr, loadPars:
 
     platformOverrides =
-        overrides (virtualDomUsr makePlatformUmr)
-
-    fn loadPars:
+        overrides (virtualDomUsr getPlatformsTranslatedUsr)
 
     compiledStatements =
         compile platformOverrides loadPars
@@ -62,10 +53,10 @@ makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
     natives =
         Targets/Javascript/Runtime.nativeDefinitions
 
-    header .. natives .. runtime .. compiledStatements .. footer makePlatformUmr loadPars
+    header .. natives .. runtime .. compiledStatements .. footer getPlatformsTranslatedUsr loadPars
 
 
-overrides as fn fn Name: USR: [ USR & Text ] =
+overrides as fn (fn Name: EA.TranslatedUsr): [ EA.TranslatedUsr & Text ] =
     fn usr:
     [
     , usr "jsCreateTextNode" & "virtualDom_jsCreateTextNode"
@@ -90,14 +81,14 @@ header as Text =
     "(function (win) {\n"
 
 
-footer as fn Platform.MakeUmr, Self.LoadPars: Text =
-    fn makePlatformUmr, pars:
+footer as fn Platform.GetPlatformsTranslatedUsr, Self.LoadPars: Text =
+    fn getPlatformsTranslatedUsr, pars:
     mainName =
         Targets/Javascript/EmittableToJs._usrToText pars.entryUsr
 
     updateDomNode =
         "updateDomNode"
-        >> virtualDomUsr makePlatformUmr
+        >> virtualDomUsr getPlatformsTranslatedUsr
         >> Targets/Javascript/EmittableToJs.translateUsrToText
 
     """

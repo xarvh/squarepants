@@ -286,6 +286,27 @@ module =
 module =
    path = Compiler/EmittableAst
    exposes =
+        Name
+        UnivarId
+        Uniqueness
+        'uni
+        'imm
+        'depends
+        toImm
+        toUni
+
+        TranslatedUsr
+
+        RawType
+        'typeExact
+        'typeFn
+        'typeVar
+        'typeRecord
+        ParType
+        'parRe
+        'parSp
+        FullType
+
         Expression
         'literalText
         'literalNumber
@@ -310,13 +331,4 @@ module =
         'argumentRecycle
         'argumentSpend
         GlobalDefinition
-        #
-        TranslatedUsr
-        TranslationState
-        initTranslationState
-        translateRoot
-        translateUmr
-        translateUsr
-        translateName
-
 

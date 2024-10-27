@@ -395,7 +395,6 @@ module =
         notEqual
 
 
-
 module =
     path = Compiler/MakeCanonical
     exposes =
@@ -404,9 +403,16 @@ module =
 
 
 module =
+   path = Compiler/MakeEmittable
+   exposes =
+      translateUsr
+
+
+module =
     path = Compiler/LazyBuild
     exposes =
         build
+
 
 module =
     path = Human/Format
