@@ -230,14 +230,16 @@ stopOnError as fn BuildPlan, @Array Error: Res None =
 
 BuildOut =
     {
-    , constructors as [ USR & TA.RawType ]
-    , natives as [ USR ]
+    , constructors as [ EA.TranslatedUsr & EA.RawType ]
+    , natives as [ EA.TranslatedUsr ]
     , rootValues as [ EA.GlobalDefinition ]
     }
 
 
 build as fn BuildPlan: Res BuildOut =
     fn pars:
+    todo "LazyBuild.build"
+    [#
     !state as CollectDependenciesState =
         pars.requiredUsrs
         >> List.map __ (fn usr: usr & usrToDependencyType usr)
@@ -392,3 +394,4 @@ build as fn BuildPlan: Res BuildOut =
     # Done!
     #
     'ok { constructors, natives, rootValues }
+    #]

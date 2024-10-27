@@ -3,7 +3,7 @@ platform as Platform =
     , compile
     , defaultImportsFile
     , defaultOutputName = "index.js"
-    , extraRequiredUsrs = [ { modulePath = "VirtualDom", symbolName = "updateDomNode" } ]
+    , extraRequiredSymbols = [ { modulePath = "VirtualDom", symbolName = "updateDomNode" } ]
     # TODO maybe "makeExecutable" should be a function instead? It is really annoying that everything becomes a function even when it's not needed.
     , makeExecutable
     , name = "browser"

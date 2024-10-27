@@ -369,8 +369,8 @@ searchAncestorDirectories as fn @IO, (fn Bool & Text: Bool), Text: Maybe Text =
 # Compile
 #
 
-getPlatformUmr as fn @IO, @State, Dict Name Meta.Location, Name: Res UMR =
-    fn @io, @state, platformModuleLocations, modulePath:
+getPlatformUmr as fn (fn Meta.ImportsPath: Res Imports), Dict Name Meta.Location, Name: Res UMR =
+    fn loadLibraryImports, platformModuleLocations, modulePath:
     try Dict.get modulePath platformModuleLocations as
 
         'nothing:
@@ -385,17 +385,17 @@ getPlatformUmr as fn @IO, @State, Dict Name Meta.Location, Name: Res UMR =
                     'ok umr
 
                 Meta.'locationLibrary libraryImportsPath modulePath2:
-                    loadImports @io @state rootPaths libraryImportsPath
+                    loadLibraryImports libraryImportsPath
                     >> onOk fn libraryImports:
                         try Dict.get modulePath libraryImports.modulePathToLocation as
 
                             'nothing:
-                                "Platform bug: no module " .. modulePath .. " the library imports for platform " .. pars.platform.name
+                                ["Platform bug: no module " .. modulePath ]
                                 >> Error.'raw
                                 >> 'err
 
                             'just (Meta.'locationLibrary _ _):
-                                "Platform bug: platform wants the UMR of a library module: " .. modulePath
+                                ["Platform bug: platform wants the UMR of a library module: " .. modulePath]
                                 >> Error.'raw
                                 >> 'err
 
@@ -493,14 +493,14 @@ compileMain as fn @IO, CompileMainPars: Res None =
     >> onOk fn platformModuleLocations:
     #
 
-    xxx =
+    extraToUsr =
         fn { modulePath, symbolName }:
-        getPlatformUmr @io @state platformModuleLocations modulePath
+        getPlatformUmr (loadImports @io @state rootPaths __) platformModuleLocations modulePath
         #
-        >> Result.map ('usr __ symbolName >> Compiler/MakeEmittable.translateUsr)
+        >> Result.map __ ('USR __ symbolName)
 
-    pars.platform.extraRequiredUsrs
-    >> List.mapRes xxx
+    pars.platform.extraRequiredSymbols
+    >> List.mapRes __ extraToUsr
     >> onOk fn extraRequiredUsrs:
     #
     # Compile!
@@ -537,13 +537,19 @@ compileMain as fn @IO, CompileMainPars: Res None =
             'just rv: rv.type
             'nothing: todo "no type!?"
 
+    getPlatformsTranslatedUsr =
+        fn modulePath, symbolName:
+        try getPlatformUmr (loadImports @io @state rootPaths __) platformModuleLocations modulePath as
+            'err e: todo "BLEH"
+            'ok umr: Compiler/MakeEmittable.translateUsr ('USR umr symbolName)
+
     {
     , constructors
     , defs = rootValues
     , entryUsr = _entryUsr
     , type
     }
-    >> pars.platform.makeExecutable makePlatformUmr
+    >> pars.platform.makeExecutable getPlatformsTranslatedUsr __
     >> IO.writeFile @io outputFile __
     >> ioToRes
     >> onOk fn _:

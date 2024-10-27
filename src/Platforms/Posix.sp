@@ -5,7 +5,7 @@ platform as Platform =
     , compile = Platforms/Browser.compile
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
-    , extraRequiredUsrs = []
+    , extraRequiredSymbols = []
     , makeExecutable
     , name = "posix"
     , quickstart = "TODO"
