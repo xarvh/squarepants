@@ -1,3 +1,19 @@
+
+sourceDir =
+    path = "."
+
+    module =
+       path = RefHierarchy
+
+
+library =
+    source = ":test"
+    module =
+        path = Test
+        globals =
+            Test
+
+
 library =
     source = "core"
 
@@ -75,9 +91,3 @@ library =
           'ok
           'err
           onOk
-
-sourceDir =
-    path = "."
-
-    module =
-       path = RefHierarchy

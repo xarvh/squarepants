@@ -3,6 +3,14 @@ sourceDir =
 
 
 library =
+    source = ":test"
+    module =
+        path = Test
+        globals =
+            Test
+
+
+library =
     source = "core"
 
     module =

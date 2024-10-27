@@ -1,5 +1,10 @@
 
 module =
+    path = Format_Test
+    exposes =
+        tests
+
+module =
     path = Format
     exposes =
         Block

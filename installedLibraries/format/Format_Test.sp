@@ -2,89 +2,89 @@ valueTest as fn Text, (fn None: a), Test.CodeExpectation a: Test =
     Test.valueTest toHuman __ __ __
 
 
-#valueTest as fn Text, (fn None: Fmt.Block), Test.CodeExpectation [Text]: Test =
+#valueTest as fn Text, (fn None: Format.Block), Test.CodeExpectation [Text]: Test =
 #    fn title, makeBlock, exp:
-#    valueTest_ title (fn None: makeBlock None >> Fmt.render >> Text.split "\n" __) exp
+#    valueTest_ title (fn None: makeBlock None >> Format.render >> Text.split "\n" __) exp
 
-format1 as fn Bool, Bool, Fmt.Block, [ Fmt.Block ]: [ Text ] =
+format1 as fn Bool, Bool, Format.Block, [ Format.Block ]: [ Text ] =
     fn breakFirst, breakRest, f, arg0 :: args:
-    Fmt.spaceSeparatedOrIndentForce breakRest (Fmt.spaceSeparatedOrIndentForce breakFirst [ f, arg0 ] :: args)
-    >> Fmt.render
+    Format.spaceSeparatedOrIndentForce breakRest (Format.spaceSeparatedOrIndentForce breakFirst [ f, arg0 ] :: args)
+    >> Format.render
     >> Text.split "\n" __
     >> List.filter __ (__ /= "")
 
 
-format2 as fn Bool, [ Fmt.Block ]: [ Text ] =
+format2 as fn Bool, [ Format.Block ]: [ Text ] =
     fn break, first :: rest:
     formatEntry =
         fn open, block:
-        Fmt.prefix 2 (Fmt.'row (Fmt.'text_ open) Fmt.space) block
+        Format.prefix 2 (Format.'row (Format.'text_ open) Format.space) block
 
-    Fmt.spaceSeparatedOrStackForce
+    Format.spaceSeparatedOrStackForce
         break
         [
-        , Fmt.rowOrStackForce break 'nothing (formatEntry "[" first :: List.map rest (formatEntry "," __))
-        , Fmt.textToBlock "]"
+        , Format.rowOrStackForce break 'nothing (formatEntry "[" first :: List.map rest (formatEntry "," __))
+        , Format.textToBlock "]"
         ]
-    >> Fmt.render
+    >> Format.render
     >> Text.split "\n" __
     >> List.filter __ (__ /= "")
 
 
-format3 as fn [ Fmt.Block & Bool & Fmt.Block ]: [ Text ] =
+format3 as fn [ Format.Block & Bool & Format.Block ]: [ Text ] =
     fn first :: rest:
     formatEntry =
         fn open, key & break & value:
-        Fmt.spaceSeparatedOrIndentForce
+        Format.spaceSeparatedOrIndentForce
             break
             [
-            , Fmt.spaceSeparatedOrStack [ Fmt.textToBlock open, key, Fmt.textToBlock "=" ]
+            , Format.spaceSeparatedOrStack [ Format.textToBlock open, key, Format.textToBlock "=" ]
             , value
             ]
 
-    Fmt.stack
+    Format.stack
         (List.concat
              [
              , [ formatEntry "{" first ]
              , List.map rest (formatEntry "," __)
-             , [ Fmt.textToBlock "}" ]
+             , [ Format.textToBlock "}" ]
              ]
         )
-    >> Fmt.render
+    >> Format.render
     >> Text.split "\n" __
     >> List.filter __ (__ /= "")
 
 
-format4 as fn Bool, Bool, Fmt.Block & Fmt.Block, Fmt.Block: [ Text ] =
+format4 as fn Bool, Bool, Format.Block & Format.Block, Format.Block: [ Text ] =
     fn breakCond, breakBodies, ifCond & ifBody, elseBody:
-    Fmt.spaceSeparatedOrStack
+    Format.spaceSeparatedOrStack
         [
-        , Fmt.spaceSeparatedOrIndentForce
+        , Format.spaceSeparatedOrIndentForce
             breakBodies
             [
-            , Fmt.rowOrStack
+            , Format.rowOrStack
                 'nothing
                 [
-                , Fmt.rowOrIndentForce
+                , Format.rowOrIndentForce
                     breakCond
                     'nothing
                     [
-                    , Fmt.textToBlock "if ("
+                    , Format.textToBlock "if ("
                     , ifCond
                     ]
-                , Fmt.textToBlock ") {"
+                , Format.textToBlock ") {"
                 ]
             , ifBody
             ]
-        , Fmt.spaceSeparatedOrIndentForce
+        , Format.spaceSeparatedOrIndentForce
             (breakBodies or breakCond)
             [
-            , Fmt.textToBlock << "} else {"
+            , Format.textToBlock << "} else {"
             , elseBody
             ]
-        , Fmt.textToBlock "}"
+        , Format.textToBlock "}"
         ]
-    >> Fmt.render
+    >> Format.render
     >> Text.split "\n" __
     >> List.filter __ (__ /= "")
 
@@ -104,12 +104,12 @@ tests as Test =
                     Formats on a single line
                     """
                     (fn 'none:
-                         format1 'false 'false (Fmt.textToBlock "f") (List.map [ "a", "b" ] Fmt.textToBlock)
+                         format1 'false 'false (Format.textToBlock "f") (List.map [ "a", "b" ] Format.textToBlock)
                     )
                     (Test.isOkAndEqualTo [ "f a b" ])
                 , valueTest
                     "formats with all arguments split"
-                    (fn 'none: format1 'true 'false (Fmt.textToBlock "f") (List.map [ "a", "b" ] Fmt.textToBlock))
+                    (fn 'none: format1 'true 'false (Format.textToBlock "f") (List.map [ "a", "b" ] Format.textToBlock))
                     (Test.isOkAndEqualTo
                          [
                          , "f"
@@ -119,7 +119,7 @@ tests as Test =
                     )
                 , valueTest
                     "formats with first argument joined"
-                    (fn 'none: format1 'false 'true (Fmt.textToBlock "f") (List.map [ "a", "b" ] Fmt.textToBlock))
+                    (fn 'none: format1 'false 'true (Format.textToBlock "f") (List.map [ "a", "b" ] Format.textToBlock))
                     (Test.isOkAndEqualTo
                          [
                          , "f a"
@@ -130,10 +130,10 @@ tests as Test =
             , Test.'group
                 "list"
                 [
-                , valueTest "formats single-line" (fn 'none: format2 'false (List.map [ "a", "b", "c" ] Fmt.textToBlock)) (Test.isOkAndEqualTo [ "[ a, b, c ]" ])
+                , valueTest "formats single-line" (fn 'none: format2 'false (List.map [ "a", "b", "c" ] Format.textToBlock)) (Test.isOkAndEqualTo [ "[ a, b, c ]" ])
                 , valueTest
                     "formats multiline"
-                    (fn 'none: format2 'true (List.map [ "a", "b", "c" ] Fmt.textToBlock))
+                    (fn 'none: format2 'true (List.map [ "a", "b", "c" ] Format.textToBlock))
                     (Test.isOkAndEqualTo
                          [
                          , "[ a"
@@ -151,8 +151,8 @@ tests as Test =
                     (fn 'none:
                          format3
                              [
-                             , Fmt.textToBlock "a" & 'false & Fmt.textToBlock "1"
-                             , Fmt.textToBlock "b" & 'false & Fmt.textToBlock "2"
+                             , Format.textToBlock "a" & 'false & Format.textToBlock "1"
+                             , Format.textToBlock "b" & 'false & Format.textToBlock "2"
                              ]
                     )
                     (Test.isOkAndEqualTo
@@ -167,8 +167,8 @@ tests as Test =
                     (fn 'none:
                          format3
                              [
-                             , Fmt.textToBlock "a" & 'true & Fmt.textToBlock "1"
-                             , Fmt.textToBlock "b" & 'false & Fmt.textToBlock "2"
+                             , Format.textToBlock "a" & 'true & Format.textToBlock "1"
+                             , Format.textToBlock "b" & 'false & Format.textToBlock "2"
                              ]
                     )
                     (Test.isOkAndEqualTo
@@ -187,10 +187,10 @@ tests as Test =
             , Test.'group
                 "if-else"
                 [
-                , valueTest "formats single-line" (fn 'none: format4 'false 'false (Fmt.textToBlock "p" & Fmt.textToBlock "a") (Fmt.textToBlock "b")) (Test.isOkAndEqualTo [ "if (p) { a } else { b }" ])
+                , valueTest "formats single-line" (fn 'none: format4 'false 'false (Format.textToBlock "p" & Format.textToBlock "a") (Format.textToBlock "b")) (Test.isOkAndEqualTo [ "if (p) { a } else { b }" ])
                 , valueTest
                     "formats multiline"
-                    (fn 'none: format4 'false 'true (Fmt.textToBlock "p" & Fmt.textToBlock "a") (Fmt.textToBlock "b"))
+                    (fn 'none: format4 'false 'true (Format.textToBlock "p" & Format.textToBlock "a") (Format.textToBlock "b"))
                     (Test.isOkAndEqualTo
                          [
                          , "if (p) {"
@@ -202,7 +202,7 @@ tests as Test =
                     )
                 , valueTest
                     "formats multiline condition"
-                    (fn 'none: format4 'true 'false (Fmt.textToBlock "p" & Fmt.textToBlock "a") (Fmt.textToBlock "b"))
+                    (fn 'none: format4 'true 'false (Format.textToBlock "p" & Format.textToBlock "a") (Format.textToBlock "b"))
                     (Test.isOkAndEqualTo
                          [
                          , "if ("

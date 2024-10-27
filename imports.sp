@@ -67,8 +67,7 @@ library =
     source = ":dependencyResolution"
 
     module =
-       path = SPLib/RefHierarchy
-       importAs = RefHierarchy
+       path = RefHierarchy_Test
 
 
 library =
@@ -76,6 +75,10 @@ library =
     module =
        path = Format
        importAs = Fmt
+
+    module =
+       path = Format_Test
+       importAs = Fmt_Test
 
 
 library =
