@@ -100,12 +100,12 @@ overrides as fn Platform.GetPlatformsTranslatedUsr: [ EA.TranslatedUsr & Text ] 
 runtime as Text =
     makeOk as Text =
         'USR (CoreDefs.makeUmr "Result") "'ok"
-        >> todo "translateUsr"
+        >> Compiler/MakeEmittable.translateUsr
         >> Targets/Javascript/EmittableToJs.translateUsrToText __
 
     makeErr as Text =
         'USR (CoreDefs.makeUmr "Result") "'err"
-        >> todo "translateUsr"
+        >> Compiler/MakeEmittable.translateUsr
         >> Targets/Javascript/EmittableToJs.translateUsrToText __
 
     """

@@ -106,7 +106,7 @@ coreOverrides as fn None: Dict EA.TranslatedUsr Override =
     & loadOverride
     , corelib "Self" "internalRepresentation" & function "JSON.stringify"
     ]
-    >> List.for Dict.empty __ (fn d, usr & override: Dict.insert d (todo "EA.translateUsr usr") override)
+    >> List.for Dict.empty __ (fn d, usr & override: Dict.insert d (Compiler/MakeEmittable.translateUsr usr) override)
 
 
 unaryPlus as Override =
@@ -244,7 +244,7 @@ accessAttrs as fn [ Text ], JA.Expr: JA.Expr =
 
 translateName as fn Name: Text =
     __
-    >> todo "EA.translateName"
+    >> Compiler/MakeEmittable.translateName
     >> "$" .. __
 
 

@@ -406,6 +406,7 @@ module =
    path = Compiler/MakeEmittable
    exposes =
       translateUsr
+      translateName
 
 
 module =
