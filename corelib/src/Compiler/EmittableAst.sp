@@ -81,7 +81,7 @@ var Expression =
           }
     , 'constructor TranslatedUsr
     , 'constructorAccess Int Expression
-    , 'isConstructor USR Expression
+    , 'isConstructor TranslatedUsr Expression
     , 'literalRecord (Maybe Expression) [ AttrName & Expression ]
     , 'recordAccess AttrName Expression
     , 'missingPattern Text Expression

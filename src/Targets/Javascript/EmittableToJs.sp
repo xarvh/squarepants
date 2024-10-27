@@ -525,21 +525,20 @@ translateExpression as fn Env, Bool, EA.Expression: TranslatedExpression =
         EA.'constructorAccess argIndex value:
             accessArrayIndex (argIndex + 1) (translateExpressionToExpression env 'true value) >> 'inline
 
-        EA.'isConstructor usr eaValue:
+        EA.'isConstructor tUsr eaValue:
             jaValue =
                 translateExpressionToExpression env 'true eaValue
 
-            if usr == CoreDefs.noneConsUsr then
+            if tUsr == Compiler/MakeEmittable.translateUsr CoreDefs.noneConsUsr then
                 JA.'var "true" >> 'inline
-            else if usr == CoreDefs.trueUsr then
+            else if tUsr == Compiler/MakeEmittable.translateUsr CoreDefs.trueUsr then
                 jaValue >> 'inline
-            else if usr == CoreDefs.falseUsr then
+            else if tUsr == Compiler/MakeEmittable.translateUsr CoreDefs.falseUsr then
                 JA.'unop "!" jaValue >> 'inline
             else
-                'USR _ name =
-                    usr
-
-                name
+                tUsr
+                >> List.last
+                >> Maybe.withDefault __ "TODO List.last error"
                 >> translateName
                 >> literalString
                 >> JA.'binop "===" (accessArrayIndex 0 jaValue) __

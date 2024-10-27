@@ -124,7 +124,7 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
             EA.'isLiteralNumber num valueToTest :: accum
 
         TA.'patternConstructor _ usr pas:
-            EA.'isConstructor usr valueToTest :: accum
+            EA.'isConstructor (translateUsr usr) valueToTest :: accum
             >> List.forWithIndex __ pas fn a, index, argPattern:
                 testPattern argPattern (EA.'constructorAccess index valueToTest) a
 
