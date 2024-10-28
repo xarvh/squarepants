@@ -167,6 +167,23 @@ library =
     module =
        path = Human/Format
 
+    module =
+        path = Compiler/TypeCheck_Test
+
+    module =
+        path = Compiler/MakeCanonical_Test
+
+    module =
+        path = Compiler/Parser_Test
+
+    module =
+        path = Compiler/Lexer_Test
+
+    module =
+        path = Compiler/Uniqueness_Specs
+
+    module =
+        path = Human/Format_Test
 
 #
 # Core

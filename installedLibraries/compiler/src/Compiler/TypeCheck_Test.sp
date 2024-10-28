@@ -161,7 +161,7 @@ infer as fn Text: fn Text: Result Text Out =
     >> TH.resErrorToStrippedText
     >> onOk fn { constructors, natives, rootValues }:
     targetUsr =
-        EA.translateUsr ('USR TH.moduleUmr targetName)
+        Compiler/MakeEmittable.translateUsr ('USR TH.moduleUmr targetName)
 
     try List.find rootValues (fn rv: rv.usr == targetUsr) as
         'nothing: 'err "find fail"

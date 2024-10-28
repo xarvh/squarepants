@@ -1,5 +1,36 @@
 
 module =
+    path = Compiler/TypeCheck_Test
+    exposes =
+        tests
+
+module =
+    path = Compiler/MakeCanonical_Test
+    exposes =
+        tests
+
+module =
+    path = Compiler/Parser_Test
+    exposes =
+        tests
+
+module =
+    path = Compiler/Lexer_Test
+    exposes =
+        tests
+
+module =
+    path = Compiler/Uniqueness_Specs
+    exposes =
+        specs
+
+module =
+    path = Human/Format_Test
+    exposes =
+        tests
+
+
+module =
    path = Types/Ast
    exposes =
       Name

@@ -102,6 +102,10 @@ sourceDir =
             Error
             Res
 
+    module =
+        path = Compiler/TestHelpers
+        importAs = TH
+
 
 #
 # Core
