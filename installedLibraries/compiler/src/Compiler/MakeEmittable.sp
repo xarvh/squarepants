@@ -48,6 +48,38 @@ translateUsr as fn USR: EA.TranslatedUsr =
     List.concat [ [ translateRoot root .. Text.fromNumber sourceDirId ], Text.split "/" modulePath, [ translateName name ] ]
 
 
+translateParType as fn TA.ParType: EA.ParType =
+    fn parType:
+    try parType as
+        TA.'parRe raw: EA.'parRe (translateRaw raw)
+        TA.'parSp full: EA.'parSp (translateFull full)
+
+
+translateFull as fn TA.FullType: EA.FullType =
+    fn { uni, raw }:
+    { uni, raw = translateRaw raw }
+
+
+translateRaw as fn TA.RawType: EA.RawType =
+    fn taRaw:
+    try taRaw as
+      TA.'typeExact _ usr pars:
+          EA.'typeExact (translateUsr usr) (List.map pars translateRaw)
+
+      TA.'typeFn _ parTypes outType:
+          EA.'typeFn (List.map parTypes translateParType) (translateFull outType)
+
+      TA.'typeVar _ tyvarId:
+          EA.'typeVar tyvarId
+
+      TA.'typeRecord _ maybeExtId attrs:
+          EA.'typeRecord maybeExtId (Dict.map attrs translateRaw)
+
+      TA.'typeError:
+          todo "this should not happen, but perhaps I should have this funciton return a Res?"
+
+
+
 var PickedName =
     , 'trivialPattern Name TA.FullType
     , 'generateName
@@ -73,7 +105,7 @@ pickMainName as fn TA.Pattern: PickedName =
                 'noNamedVariables
 
 
-translatePattern as fn TA.Pattern, EA.Expression: [ TA.FullType & Name & EA.Expression ] =
+translatePattern as fn TA.Pattern, EA.Expression: [ EA.FullType & Name & EA.Expression ] =
     fn pattern, accessExpr:
     translatePatternRec pattern accessExpr []
 
@@ -83,7 +115,7 @@ translatePattern as fn TA.Pattern, EA.Expression: [ TA.FullType & Name & EA.Expr
 #        TA.PatternAny _ _ _: []
 #        _: translatePatternRec pattern accessExpr []
 
-translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.Expression ]: [ TA.FullType & Name & EA.Expression ] =
+translatePatternRec as fn TA.Pattern, EA.Expression, [ EA.FullType & Name & EA.Expression ]: [ EA.FullType & Name & EA.Expression ] =
     fn pattern, accessExpr, accum:
     try pattern as
 
@@ -91,7 +123,7 @@ translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.E
             accum
 
         TA.'patternAny _ { maybeName = 'just name, type }:
-            type & name & accessExpr :: accum
+            translateFull type & name & accessExpr :: accum
 
         TA.'patternLiteralNumber _ _:
             accum
@@ -260,7 +292,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                                 , inExpression = tryExpression
                                 , letExpression = translateExpression env_ value
                                 , maybeName = 'just tryName
-                                , type = valueType
+                                , type = translateFull valueType
                                 }
 
                         EA.'localVariable tryName & wrap & env_
@@ -273,7 +305,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     >> List.reverse
                     >> EA.'and
 
-                namesAndExpressions as [ TA.FullType & Name & EA.Expression ] =
+                namesAndExpressions as [ EA.FullType & Name & EA.Expression ] =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
@@ -307,7 +339,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         , inExpression = translateExpression env e
                         , letExpression = translateExpression env body
                         , maybeName = 'nothing
-                        , type = valueDef.type
+                        , type = translateFull valueDef.type
                         }
 
                 'trivialPattern defName type:
@@ -316,7 +348,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         , inExpression = translateExpression env e
                         , letExpression = translateExpression env body
                         , maybeName = 'just defName
-                        , type
+                        , type = translateFull type
                         }
 
                 'generateName:
@@ -327,7 +359,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     namesAndExpressions =
                         translatePattern valueDef.pattern (EA.'localVariable mainName)
 
-                    wrapWithUnpackedPatternVar as fn EA.Expression, TA.FullType & Name & EA.Expression: EA.Expression =
+                    wrapWithUnpackedPatternVar as fn EA.Expression, EA.FullType & Name & EA.Expression: EA.Expression =
                         fn inExpression, type & name & letExpression:
                         EA.'letIn
                             {
@@ -344,7 +376,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                             , inExpression
                             , letExpression = translateExpression newEnv body
                             , maybeName = 'just mainName
-                            , type = valueDef.type
+                            , type = translateFull valueDef.type
                             }
 
                     translateExpression newEnv e
@@ -354,5 +386,5 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'destroyIn name e:
             translateExpression env e
 
-        TA.'introspect self:
-            EA.'introspect self
+        TA.'introspect usr:
+            EA.'introspect (translateUsr usr)

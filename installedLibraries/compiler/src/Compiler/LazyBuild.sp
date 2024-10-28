@@ -245,7 +245,7 @@ build as fn BuildPlan: Res BuildOut =
 
 
 
-loadAndTypeCheck as fn BuildPlan: Res { env as Compiler/TypeCheck.Env, valueDefs as [ USR & TA.ValueDef ] } =
+loadAndTypeCheck as fn BuildPlan: Res BuildEmittablePars =
     fn pars:
 
     !state as CollectDependenciesState =
@@ -367,14 +367,18 @@ loadAndTypeCheck as fn BuildPlan: Res { env as Compiler/TypeCheck.Env, valueDefs
         >> Error.'raw
         >> 'err
     else
-        'ok { env = envF, valueDefs = valueDefsWithDestruction }
+        'ok { modulesByUmr, env = envF, valueDefs = valueDefsWithDestruction }
 
 
 
+BuildEmittablePars =
+    { env as Compiler/TypeCheck.Env
+    , valueDefs as [ USR & TA.ValueDef ]
+    , modulesByUmr as Dict UMR CA.Module
+    }
 
-
-buildEmittable as fn { env as Compiler/TypeCheck.Env, valueDefs as [ USR & TA.ValueDef ] }: Res BuildOut =
-    fn { env, valueDefs }:
+buildEmittable as fn BuildEmittablePars: Res BuildOut =
+    fn { env, valueDefs, modulesByUmr }:
 
     #
     # Emit
@@ -384,27 +388,30 @@ buildEmittable as fn { env as Compiler/TypeCheck.Env, valueDefs as [ USR & TA.Va
         fn usr & def:
         Maybe.map def.body fn body:
             {
-            , deps = def.directDeps
+#            , deps = def.directDeps
             , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
-            , freeTyvars = def.freeTyvars
-            , freeUnivars = def.freeUnivars
-            , type = def.type.raw
+#            , freeTyvars = def.freeTyvars
+#            , freeUnivars = def.freeUnivars
+            , type = Compiler/MakeEmittable.translateRaw def.type.raw
             , usr = Compiler/MakeEmittable.translateUsr usr
             }
 
     rootValues as [ EA.GlobalDefinition ] =
         List.filterMap valueDefs translateDef
 
-    natives as [ USR ] =
+    natives as [ EA.TranslatedUsr ] =
         valueDefs
         >> List.filter __ (fn usr & def: def.body == 'nothing)
-        >> List.map __ Tuple.first
+        >> List.map __ (__ >> Tuple.first >> Compiler/MakeEmittable.translateUsr)
 
     #
     # Constructors
     #
-    constructors as [ USR & TA.RawType ] =
-        Dict.toList (Dict.map envF.constructors (fn v: v.type.raw))
+    constructors as [ EA.TranslatedUsr & EA.RawType ] =
+        env.constructors
+        >> Dict.toList
+        >> List.map __ fn usr & constr:
+            Compiler/MakeEmittable.translateUsr usr & Compiler/MakeEmittable.translateRaw constr.type.raw
 
     #
     # Done!

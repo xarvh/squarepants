@@ -55,7 +55,7 @@ var Expression =
           }
     , 'destroyIn Name Expression
     , 'error Pos
-    , 'introspect Self.Self
+    , 'introspect USR
 
 
 var Pattern =

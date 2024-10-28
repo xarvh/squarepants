@@ -51,7 +51,8 @@ var Def =
 
 
 Self =
-    {
-    , def as Def
-    , usr as EA.TranslatedUsr
-    }
+    EA.TranslatedUsr
+#    {
+#    , def as Def
+#    , usr as EA.TranslatedUsr
+#    }
