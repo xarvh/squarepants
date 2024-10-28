@@ -58,23 +58,13 @@ resErrorToStrippedText as fn Res a: Result Text a =
 #
 # Meta
 #
-#imports as Imports =
-#    pars as ImportsFile.ToImportsPars =
-#        {
-#        , getSourceDirId = fn importsDir, sourceDir: 1
-#        , importsPath
-#        , joinPath = Path.join
-#        }
-#
-#    try ImportsFile.toImports pars DefaultImports.defaultImportsFile as
-#
-#        'err e:
-#            log "Error in DefaultImports.sp: " e
-#
-#            todo "error loading DefaultImports.sp"
-#
-#        'ok m:
-#            m
+imports as Imports =
+    {
+    , globalNameToLocation = Dict.empty
+    , moduleAliasToLocation = Dict.empty
+    , modulePathToLocation = Dict.empty
+    , platforms = Dict.empty
+    }
 
 
 #

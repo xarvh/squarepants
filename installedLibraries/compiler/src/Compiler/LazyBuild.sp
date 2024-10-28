@@ -206,15 +206,6 @@ usrToDependencyType as fn USR: DependencyType =
     else
         'valueDependency
 
-
-BuildPlan =
-    {
-    , loadCaModule as fn USR: Res CA.Module
-    , projectImports as Imports
-    , requiredUsrs as [ USR ]
-    }
-
-
 stopOnError as fn BuildPlan, @Array Error: Res None =
     fn pars, @errors:
     try Array.toList @errors as
@@ -228,6 +219,15 @@ stopOnError as fn BuildPlan, @Array Error: Res None =
             >> 'err
 
 
+BuildPlan =
+    {
+    , loadCaModule as fn USR: Res CA.Module
+    , projectImports as Imports
+    , requiredUsrs as [ USR ]
+    }
+
+
+
 BuildOut =
     {
     , constructors as [ EA.TranslatedUsr & EA.RawType ]
@@ -238,8 +238,16 @@ BuildOut =
 
 build as fn BuildPlan: Res BuildOut =
     fn pars:
-    todo "LazyBuild.build"
-    [#
+
+    loadAndTypeCheck pars
+    >> onOk buildEmittable
+
+
+
+
+loadAndTypeCheck as fn BuildPlan: Res { env as Compiler/TypeCheck.Env, valueDefs as [ USR & TA.ValueDef ] } =
+    fn pars:
+
     !state as CollectDependenciesState =
         pars.requiredUsrs
         >> List.map __ (fn usr: usr & usrToDependencyType usr)
@@ -343,6 +351,7 @@ build as fn BuildPlan: Res BuildOut =
 
     stopOnError pars @errors
     >> onOk fn 'none:
+
     #
     # Ensure that entryUsr and platform usrs are available?
     #
@@ -358,8 +367,15 @@ build as fn BuildPlan: Res BuildOut =
         >> Error.'raw
         >> 'err
     else
-        'ok 'none
-    >> onOk fn 'none:
+        'ok { env = envF, valueDefs = valueDefsWithDestruction }
+
+
+
+
+
+buildEmittable as fn { env as Compiler/TypeCheck.Env, valueDefs as [ USR & TA.ValueDef ] }: Res BuildOut =
+    fn { env, valueDefs }:
+
     #
     # Emit
     #
@@ -373,14 +389,14 @@ build as fn BuildPlan: Res BuildOut =
             , freeTyvars = def.freeTyvars
             , freeUnivars = def.freeUnivars
             , type = def.type.raw
-            , usr = todo "EA.translateUsr usr"
+            , usr = Compiler/MakeEmittable.translateUsr usr
             }
 
     rootValues as [ EA.GlobalDefinition ] =
-        List.filterMap valueDefsWithDestruction translateDef
+        List.filterMap valueDefs translateDef
 
     natives as [ USR ] =
-        valueDefsWithDestruction
+        valueDefs
         >> List.filter __ (fn usr & def: def.body == 'nothing)
         >> List.map __ Tuple.first
 
@@ -394,4 +410,4 @@ build as fn BuildPlan: Res BuildOut =
     # Done!
     #
     'ok { constructors, natives, rootValues }
-    #]
+

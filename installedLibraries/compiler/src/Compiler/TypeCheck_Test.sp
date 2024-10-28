@@ -157,7 +157,7 @@ infer as fn Text: fn Text: Result Text Out =
     , projectImports = TH.imports
     , requiredUsrs
     }
-    >> Compiler/LazyBuild.build
+    >> todo "Compiler/LazyBuild.build"
     >> TH.resErrorToStrippedText
     >> onOk fn { constructors, natives, rootValues }:
     targetUsr =
@@ -171,7 +171,7 @@ infer as fn Text: fn Text: Result Text Out =
         Hash.fromList []
 
     ft as Dict TA.TyvarId TA.Tyvar =
-        Dict.for Dict.empty def.freeTyvars (fn d, id, tc: Dict.insert d (TA.normalizeTyvarId @hash id) tc)
+        Dict.for Dict.empty (todo "def.freeTyvars") (fn d, id, tc: Dict.insert d (TA.normalizeTyvarId @hash id) tc)
 
     'ok
         {
