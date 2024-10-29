@@ -157,27 +157,28 @@ infer as fn Text: fn Text: Result Text Out =
     , projectImports = TH.imports
     , requiredUsrs
     }
-    >> todo "Compiler/LazyBuild.build"
+    >> Compiler/LazyBuild.loadAndTypeCheck
     >> TH.resErrorToStrippedText
-    >> onOk fn { constructors, natives, rootValues }:
-    targetUsr =
-        Compiler/MakeEmittable.translateUsr ('USR TH.moduleUmr targetName)
+    >> onOk fn { with valueDefs }:
 
-    try List.find rootValues (fn rv: rv.usr == targetUsr) as
+    targetUsr =
+        ('USR TH.moduleUmr targetName)
+
+    try List.find valueDefs (fn usr & def: usr == targetUsr) as
         'nothing: 'err "find fail"
-        'just def: 'ok def
+        'just (usr & def): 'ok def
     >> onOk fn def:
     !hash =
         Hash.fromList []
 
     ft as Dict TA.TyvarId TA.Tyvar =
-        Dict.for Dict.empty (todo "def.freeTyvars") (fn d, id, tc: Dict.insert d (TA.normalizeTyvarId @hash id) tc)
+        Dict.for Dict.empty def.freeTyvars (fn d, id, tc: Dict.insert d (TA.normalizeTyvarId @hash id) tc)
 
     'ok
         {
         , freeTyvars = ft
         , type =
-            def.type
+            def.type.raw
             >> TA.normalizeType @hash __
             >> TA.stripTypePos
         }

@@ -20,6 +20,14 @@ TranslatedUsr =
     [ Text ]
 
 
+#
+# TODO removing this will cause an error elsewhere in the code
+# rather than in the RawType definition below.
+#
+TyvarId =
+    Int
+
+
 # TODO once we have monomorphization, this is not needed any more
 UnivarId =
     Int

@@ -24,7 +24,7 @@ load as fn a: Result EA.RawType IntegerOnly =
         sp_introspect_type Number
 
     numberType as EA.RawType =
-        EA.'typeExact numberSelf.usr []
+        todo "EA.'typeExact numberSelf.usr []"
 
     def as EA.GlobalDefinition =
         {

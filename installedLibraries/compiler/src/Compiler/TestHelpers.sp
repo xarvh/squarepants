@@ -58,10 +58,22 @@ resErrorToStrippedText as fn Res a: Result Text a =
 #
 # Meta
 #
+coreGlobalSymbols =
+    [
+    , "Number"
+    , "Text"
+    , "Bool"
+    , "'true"
+    , "'false"
+    , "None"
+    , "'none"
+    ]
+
+
 imports as Imports =
     {
-    , globalNameToLocation = Dict.empty
-    , moduleAliasToLocation = Dict.empty
+    , globalNameToLocation = List.for Dict.empty coreGlobalSymbols (fn acc, symbol: Dict.insert acc symbol (Meta.'locationSourceDir CoreDefs.umr))
+    , moduleAliasToLocation = Dict.ofOne "Core" (Meta.'locationSourceDir CoreDefs.umr)
     , modulePathToLocation = Dict.empty
     , platforms = Dict.empty
     }

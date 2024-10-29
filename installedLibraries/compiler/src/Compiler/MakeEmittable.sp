@@ -208,8 +208,8 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
 translateArgAndType as fn Env, TA.Argument: EA.Argument =
     fn env, taArg:
     try taArg as
-        TA.'argumentExpression fullType exp: EA.'argumentSpend fullType (translateExpression env exp)
-        TA.'argumentRecycle pos rawType attrPath name: EA.'argumentRecycle rawType attrPath name
+        TA.'argumentExpression fullType exp: EA.'argumentSpend (translateFull fullType) (translateExpression env exp)
+        TA.'argumentRecycle pos rawType attrPath name: EA.'argumentRecycle (translateRaw rawType) attrPath name
 
 
 translateExpression as fn Env, TA.Expression: EA.Expression =
