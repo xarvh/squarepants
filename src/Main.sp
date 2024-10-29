@@ -5,15 +5,15 @@ allTests as [ Test ] =
     , Compiler/Parser_Test.tests
     , Compiler/MakeCanonical_Test.tests
     , Compiler/TypeCheck_Test.tests
+    , Compiler/Uniqueness_Specs.specs
     , Targets/Emitted_Test.tests
     , Hash_Test.tests
     , Array_Test.tests
     , List_Test.tests
     , Dict_Test.tests
     , Self_Test.tests
-    , Uniqueness.specs
-    , SPLib/Format_Test.tests
-    , SPLib/RefHierarchy_Test.tests
+    , Fmt_Test.tests
+    , RefHierarchy_Test.tests
     ]
 
 

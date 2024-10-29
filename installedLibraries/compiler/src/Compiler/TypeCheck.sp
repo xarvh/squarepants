@@ -1695,48 +1695,7 @@ doIntrospect as fn @State, Env, Pos, Maybe TA.FullType, Token.Introspect, USR: T
             'nothing: bug "no self?"
             'just expandedAlias: expandedAlias.type
 
-    expression =
-        try introspect as
-
-            Token.'value:
-                try getValueDef env pos usr @state as
-
-                    'nothing:
-                        TA.'error pos
-
-                    'just def:
-                        if def.maybeAnnotation == 'nothing then
-                            todo "cannot introspect non-annotated values"
-                        else
-                            TA.'introspect { def = Self.'value { def with maybeBody = 'nothing }, usr }
-
-            Token.'type:
-                try getTypeDef env pos usr @state as
-
-                    'nothing:
-                        TA.'error pos
-
-                    'just (pars & _):
-                        {
-                        , def =
-                            Self.'opaqueType
-                                {
-                                , constructors = Dict.empty
-                                , pars
-                                , usr
-                                }
-                        , usr
-                        }
-                        >> TA.'introspect
-
-            Token.'typeOpen:
-                #TODO!!!! - ensure that type is not opaque
-
-                try getTypeDef env pos usr @state as
-                    'nothing: TA.'error pos
-                    'just (_ & def): TA.'introspect { def, usr }
-
-    expression & { raw = selfType, uni = 'uni }
+    TA.'introspect usr & { raw = selfType, uni = 'uni }
 
 
 doTry as fn Env, Pos, TA.RawType, CA.Expression, [ Uniqueness & CA.Pattern & CA.Expression ], @State: TA.Expression & TA.FullType =

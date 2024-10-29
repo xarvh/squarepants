@@ -157,15 +157,16 @@ infer as fn Text: fn Text: Result Text Out =
     , projectImports = TH.imports
     , requiredUsrs
     }
-    >> Compiler/LazyBuild.build
+    >> Compiler/LazyBuild.loadAndTypeCheck
     >> TH.resErrorToStrippedText
-    >> onOk fn { constructors, natives, rootValues }:
-    targetUsr =
-        EA.translateUsr ('USR TH.moduleUmr targetName)
+    >> onOk fn { with valueDefs }:
 
-    try List.find rootValues (fn rv: rv.usr == targetUsr) as
+    targetUsr =
+        ('USR TH.moduleUmr targetName)
+
+    try List.find valueDefs (fn usr & def: usr == targetUsr) as
         'nothing: 'err "find fail"
-        'just def: 'ok def
+        'just (usr & def): 'ok def
     >> onOk fn def:
     !hash =
         Hash.fromList []
@@ -177,7 +178,7 @@ infer as fn Text: fn Text: Result Text Out =
         {
         , freeTyvars = ft
         , type =
-            def.type
+            def.type.raw
             >> TA.normalizeType @hash __
             >> TA.stripTypePos
         }

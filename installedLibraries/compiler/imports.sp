@@ -1,57 +1,3 @@
-[# imports.sp uses the same syntax as normal SP files, which means all tools such as syntax highlight and formatting will work. #]
-
-#
-# Platform
-#
-library =
-    platform = posix
-    source = ":posix"
-
-    module =
-       path = IO
-       globals = IO
-
-    module =
-       path = Path
-
-
-sourceDir =
-    path = "specs"
-
-
-sourceDir =
-    path = "src"
-
-    module =
-        path = ImportsFile
-        globals =
-            ImportsFile
-
-    module =
-        path = ExportsFile
-        globals =
-            ExportsFile
-
-    module =
-        path = Human/Type
-        globals =
-            usrToText
-
-    module =
-       path = SPLib/SPON
-       importAs = SPON
-
-    module =
-       path = Targets/Javascript/Ast
-       importAs = JA
-
-    module =
-       path = Platform
-       importAs = Platform
-       globals =
-          Platform
-
-
 #
 # Libraries
 #
@@ -65,9 +11,8 @@ library =
 
 library =
     source = ":dependencyResolution"
-
     module =
-       path = RefHierarchy_Test
+       path = RefHierarchy
 
 
 library =
@@ -76,13 +21,18 @@ library =
        path = Format
        importAs = Fmt
 
-    module =
-       path = Format_Test
-       importAs = Fmt_Test
-
 
 library =
-    source = ":compiler"
+    source = ":parser"
+    module =
+       path = Parser
+
+
+#
+# Source
+#
+sourceDir =
+    path = "src"
 
     module =
        path = Types/Ast
@@ -142,48 +92,20 @@ library =
             'token
 
     module =
-       path = Compiler/LazyBuild
+        path = Compiler/CoreDefs
+        importAs = CoreDefs
 
     module =
-       path = Compiler/Error
-       importAs = Error
-       globals =
-          Error
-          Res
+        path = Compiler/Error
+        importAs = Error
+        globals =
+            Error
+            Res
 
     module =
-       path = Compiler/Parser
+        path = Compiler/TestHelpers
+        importAs = TH
 
-    module =
-       path = Compiler/CoreDefs
-       importAs = CoreDefs
-
-    module =
-       path = Compiler/MakeCanonical
-
-    module =
-       path = Compiler/MakeEmittable
-
-    module =
-       path = Human/Format
-
-    module =
-        path = Compiler/TypeCheck_Test
-
-    module =
-        path = Compiler/MakeCanonical_Test
-
-    module =
-        path = Compiler/Parser_Test
-
-    module =
-        path = Compiler/Lexer_Test
-
-    module =
-        path = Compiler/Uniqueness_Specs
-
-    module =
-        path = Human/Format_Test
 
 #
 # Core
@@ -196,26 +118,13 @@ library =
        importAs = EA
        globals =
           Name
-          UnivarId
-          Uniqueness
           'uni
           'imm
           'depends
+          UnivarId
+          Uniqueness
           toImm
           toUni
-
-
-    # unlike sourceDirs, libraries don't automatically expose all available modules
-    module =
-        path = Array_Test
-    module =
-        path = Dict_Test
-    module =
-        path = Hash_Test
-    module =
-        path = List_Test
-    module =
-        path = Self_Test
 
     module =
        path = Core

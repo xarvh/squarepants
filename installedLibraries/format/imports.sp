@@ -1,6 +1,17 @@
-
 sourceDir =
-    path = "src"
+    path = "."
+
+
+library =
+    source = ":test"
+    module =
+        path = Test
+        globals =
+            Test
+
+
+library =
+    source = "core"
 
     module =
        path = Core
@@ -13,11 +24,6 @@ sourceDir =
           'none
           'true
           'false
-
-
-    module =
-       path = BuildInfo
-
 
     module =
        path = Debug
@@ -81,26 +87,3 @@ sourceDir =
           'ok
           'err
           onOk
-
-    module =
-        path = Self
-
-    module =
-       path = Compiler/EmittableAst
-       importAs = EA
-
-    module =
-        path = Compiler/Token
-        importAs = Token
-        globals =
-            Token
-            'token
-
-
-library =
-    source = ":test"
-    module =
-       path = Test
-       importAs = Test
-       globals = Test
-

@@ -206,15 +206,6 @@ usrToDependencyType as fn USR: DependencyType =
     else
         'valueDependency
 
-
-BuildPlan =
-    {
-    , loadCaModule as fn USR: Res CA.Module
-    , projectImports as Imports
-    , requiredUsrs as [ USR ]
-    }
-
-
 stopOnError as fn BuildPlan, @Array Error: Res None =
     fn pars, @errors:
     try Array.toList @errors as
@@ -228,16 +219,35 @@ stopOnError as fn BuildPlan, @Array Error: Res None =
             >> 'err
 
 
+BuildPlan =
+    {
+    , loadCaModule as fn USR: Res CA.Module
+    , projectImports as Imports
+    , requiredUsrs as [ USR ]
+    }
+
+
+
 BuildOut =
     {
-    , constructors as [ USR & TA.RawType ]
-    , natives as [ USR ]
+    , constructors as [ EA.TranslatedUsr & EA.RawType ]
+    , natives as [ EA.TranslatedUsr ]
     , rootValues as [ EA.GlobalDefinition ]
     }
 
 
 build as fn BuildPlan: Res BuildOut =
     fn pars:
+
+    loadAndTypeCheck pars
+    >> onOk buildEmittable
+
+
+
+
+loadAndTypeCheck as fn BuildPlan: Res BuildEmittablePars =
+    fn pars:
+
     !state as CollectDependenciesState =
         pars.requiredUsrs
         >> List.map __ (fn usr: usr & usrToDependencyType usr)
@@ -341,6 +351,7 @@ build as fn BuildPlan: Res BuildOut =
 
     stopOnError pars @errors
     >> onOk fn 'none:
+
     #
     # Ensure that entryUsr and platform usrs are available?
     #
@@ -356,8 +367,19 @@ build as fn BuildPlan: Res BuildOut =
         >> Error.'raw
         >> 'err
     else
-        'ok 'none
-    >> onOk fn 'none:
+        'ok { modulesByUmr, env = envF, valueDefs = valueDefsWithDestruction }
+
+
+
+BuildEmittablePars =
+    { env as Compiler/TypeCheck.Env
+    , valueDefs as [ USR & TA.ValueDef ]
+    , modulesByUmr as Dict UMR CA.Module
+    }
+
+buildEmittable as fn BuildEmittablePars: Res BuildOut =
+    fn { env, valueDefs, modulesByUmr }:
+
     #
     # Emit
     #
@@ -366,29 +388,33 @@ build as fn BuildPlan: Res BuildOut =
         fn usr & def:
         Maybe.map def.body fn body:
             {
-            , deps = def.directDeps
+#            , deps = def.directDeps
             , expr = Compiler/MakeEmittable.translateExpression (Compiler/MakeEmittable.mkEnv usr modulesByUmr) body
-            , freeTyvars = def.freeTyvars
-            , freeUnivars = def.freeUnivars
-            , type = def.type.raw
-            , usr = EA.translateUsr usr
+#            , freeTyvars = def.freeTyvars
+#            , freeUnivars = def.freeUnivars
+            , type = Compiler/MakeEmittable.translateRaw def.type.raw
+            , usr = Compiler/MakeEmittable.translateUsr usr
             }
 
     rootValues as [ EA.GlobalDefinition ] =
-        List.filterMap valueDefsWithDestruction translateDef
+        List.filterMap valueDefs translateDef
 
-    natives as [ USR ] =
-        valueDefsWithDestruction
+    natives as [ EA.TranslatedUsr ] =
+        valueDefs
         >> List.filter __ (fn usr & def: def.body == 'nothing)
-        >> List.map __ Tuple.first
+        >> List.map __ (__ >> Tuple.first >> Compiler/MakeEmittable.translateUsr)
 
     #
     # Constructors
     #
-    constructors as [ USR & TA.RawType ] =
-        Dict.toList (Dict.map envF.constructors (fn v: v.type.raw))
+    constructors as [ EA.TranslatedUsr & EA.RawType ] =
+        env.constructors
+        >> Dict.toList
+        >> List.map __ fn usr & constr:
+            Compiler/MakeEmittable.translateUsr usr & Compiler/MakeEmittable.translateRaw constr.type.raw
 
     #
     # Done!
     #
     'ok { constructors, natives, rootValues }
+

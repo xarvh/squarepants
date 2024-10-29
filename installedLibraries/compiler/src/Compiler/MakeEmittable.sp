@@ -19,6 +19,66 @@ mkEnv as fn USR, Dict UMR CA.Module: Env =
 #
 # Translation
 #
+translateRoot as fn Meta.RootDirectory: Text =
+    try __ as
+        Meta.'core: "c"
+        Meta.'user: "u"
+        Meta.'installed: "i"
+
+
+translateName as fn Name: Text =
+    fn name:
+    if Text.startsWith "'" name then
+        head =
+            Text.slice 1 2 name
+
+        rest =
+            Text.slice 2 9999 name
+
+        Text.toUpper head .. rest
+    else
+        name
+
+
+translateUsr as fn USR: EA.TranslatedUsr =
+    fn usr:
+    'USR ('UMR root sourceDirId modulePath) name =
+        usr
+
+    List.concat [ [ translateRoot root .. Text.fromNumber sourceDirId ], Text.split "/" modulePath, [ translateName name ] ]
+
+
+translateParType as fn TA.ParType: EA.ParType =
+    fn parType:
+    try parType as
+        TA.'parRe raw: EA.'parRe (translateRaw raw)
+        TA.'parSp full: EA.'parSp (translateFull full)
+
+
+translateFull as fn TA.FullType: EA.FullType =
+    fn { uni, raw }:
+    { uni, raw = translateRaw raw }
+
+
+translateRaw as fn TA.RawType: EA.RawType =
+    fn taRaw:
+    try taRaw as
+      TA.'typeExact _ usr pars:
+          EA.'typeExact (translateUsr usr) (List.map pars translateRaw)
+
+      TA.'typeFn _ parTypes outType:
+          EA.'typeFn (List.map parTypes translateParType) (translateFull outType)
+
+      TA.'typeVar _ tyvarId:
+          EA.'typeVar tyvarId
+
+      TA.'typeRecord _ maybeExtId attrs:
+          EA.'typeRecord maybeExtId (Dict.map attrs translateRaw)
+
+      TA.'typeError:
+          todo "this should not happen, but perhaps I should have this funciton return a Res?"
+
+
 
 var PickedName =
     , 'trivialPattern Name TA.FullType
@@ -45,7 +105,7 @@ pickMainName as fn TA.Pattern: PickedName =
                 'noNamedVariables
 
 
-translatePattern as fn TA.Pattern, EA.Expression: [ TA.FullType & Name & EA.Expression ] =
+translatePattern as fn TA.Pattern, EA.Expression: [ EA.FullType & Name & EA.Expression ] =
     fn pattern, accessExpr:
     translatePatternRec pattern accessExpr []
 
@@ -55,7 +115,7 @@ translatePattern as fn TA.Pattern, EA.Expression: [ TA.FullType & Name & EA.Expr
 #        TA.PatternAny _ _ _: []
 #        _: translatePatternRec pattern accessExpr []
 
-translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.Expression ]: [ TA.FullType & Name & EA.Expression ] =
+translatePatternRec as fn TA.Pattern, EA.Expression, [ EA.FullType & Name & EA.Expression ]: [ EA.FullType & Name & EA.Expression ] =
     fn pattern, accessExpr, accum:
     try pattern as
 
@@ -63,7 +123,7 @@ translatePatternRec as fn TA.Pattern, EA.Expression, [ TA.FullType & Name & EA.E
             accum
 
         TA.'patternAny _ { maybeName = 'just name, type }:
-            type & name & accessExpr :: accum
+            translateFull type & name & accessExpr :: accum
 
         TA.'patternLiteralNumber _ _:
             accum
@@ -96,7 +156,7 @@ testPattern as fn TA.Pattern, EA.Expression, [ EA.Expression ]: [ EA.Expression 
             EA.'isLiteralNumber num valueToTest :: accum
 
         TA.'patternConstructor _ usr pas:
-            EA.'isConstructor usr valueToTest :: accum
+            EA.'isConstructor (translateUsr usr) valueToTest :: accum
             >> List.forWithIndex __ pas fn a, index, argPattern:
                 testPattern argPattern (EA.'constructorAccess index valueToTest) a
 
@@ -148,8 +208,8 @@ translateParameter as fn Env, EA.Expression, TA.Parameter: EA.Expression & (Bool
 translateArgAndType as fn Env, TA.Argument: EA.Argument =
     fn env, taArg:
     try taArg as
-        TA.'argumentExpression fullType exp: EA.'argumentSpend fullType (translateExpression env exp)
-        TA.'argumentRecycle pos rawType attrPath name: EA.'argumentRecycle rawType attrPath name
+        TA.'argumentExpression fullType exp: EA.'argumentSpend (translateFull fullType) (translateExpression env exp)
+        TA.'argumentRecycle pos rawType attrPath name: EA.'argumentRecycle (translateRaw rawType) attrPath name
 
 
 translateExpression as fn Env, TA.Expression: EA.Expression =
@@ -166,13 +226,13 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
             EA.'localVariable name
 
         TA.'variable _ ('refGlobal usr):
-            EA.'globalVariable (EA.translateUsr usr)
+            EA.'globalVariable (translateUsr usr)
 
         TA.'variable _ ('refPlaceholder n):
             EA.'placeholderVariable n
 
         TA.'constructor _ usr:
-            EA.'constructor (EA.translateUsr usr)
+            EA.'constructor (translateUsr usr)
 
         TA.'recordAccess _ attrName exp:
             EA.'recordAccess attrName (translateExpression env exp)
@@ -216,7 +276,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         EA.'localVariable name & identity & env
 
                     TA.'variable _ ('refGlobal usr) & 'imm:
-                        EA.'globalVariable (EA.translateUsr usr) & identity & env
+                        EA.'globalVariable (translateUsr usr) & identity & env
 
                     TA.'variable _ ('refPlaceholder n) & 'imm:
                         EA.'placeholderVariable n & identity & env
@@ -232,7 +292,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                                 , inExpression = tryExpression
                                 , letExpression = translateExpression env_ value
                                 , maybeName = 'just tryName
-                                , type = valueType
+                                , type = translateFull valueType
                                 }
 
                         EA.'localVariable tryName & wrap & env_
@@ -245,7 +305,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     >> List.reverse
                     >> EA.'and
 
-                namesAndExpressions as [ TA.FullType & Name & EA.Expression ] =
+                namesAndExpressions as [ EA.FullType & Name & EA.Expression ] =
                     translatePattern pattern valueExpression
 
                 whenConditionMatches as EA.Expression =
@@ -279,7 +339,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         , inExpression = translateExpression env e
                         , letExpression = translateExpression env body
                         , maybeName = 'nothing
-                        , type = valueDef.type
+                        , type = translateFull valueDef.type
                         }
 
                 'trivialPattern defName type:
@@ -288,7 +348,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                         , inExpression = translateExpression env e
                         , letExpression = translateExpression env body
                         , maybeName = 'just defName
-                        , type
+                        , type = translateFull type
                         }
 
                 'generateName:
@@ -299,7 +359,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                     namesAndExpressions =
                         translatePattern valueDef.pattern (EA.'localVariable mainName)
 
-                    wrapWithUnpackedPatternVar as fn EA.Expression, TA.FullType & Name & EA.Expression: EA.Expression =
+                    wrapWithUnpackedPatternVar as fn EA.Expression, EA.FullType & Name & EA.Expression: EA.Expression =
                         fn inExpression, type & name & letExpression:
                         EA.'letIn
                             {
@@ -316,7 +376,7 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
                             , inExpression
                             , letExpression = translateExpression newEnv body
                             , maybeName = 'just mainName
-                            , type = valueDef.type
+                            , type = translateFull valueDef.type
                             }
 
                     translateExpression newEnv e
@@ -326,5 +386,5 @@ translateExpression as fn Env, TA.Expression: EA.Expression =
         TA.'destroyIn name e:
             translateExpression env e
 
-        TA.'introspect self:
-            EA.'introspect self
+        TA.'introspect usr:
+            EA.'introspect (translateUsr usr)

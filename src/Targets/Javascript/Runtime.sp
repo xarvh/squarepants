@@ -7,25 +7,24 @@ listNilName as Text =
 
 
 nativeDefinitions as Text =
+    #
+    coreToText =
+        fn moduleName, symbolName:
+        'USR (CoreDefs.makeUmr moduleName) symbolName
+        >> Compiler/MakeEmittable.translateUsr
+        >> Targets/Javascript/EmittableToJs.translateUsrToText
 
     okRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText  ('USR (CoreDefs.makeUmr "Result") "'ok")
+        coreToText "Result" "'ok"
 
     errRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Result") "'err")
-
+        coreToText "Result" "'err"
 
     nothingRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'nothing")
+        coreToText "Maybe" "'nothing"
 
     justRef as Text =
-        Targets/Javascript/EmittableToJs.translateUsrToText ('USR (CoreDefs.makeUmr "Maybe") "'just")
-
-#    translateUsrSelf =
-#        sp_introspect_value Targets/Javascript/EmittableToJs.translateUsr
-#
-#    translateUsrRef as Text =
-#        Targets/Javascript/EmittableToJs.translateUsr translateUsrSelf.usr
+        coreToText "Maybe" "'just"
 
     """
     let __re__;
@@ -330,7 +329,7 @@ nativeDefinitions as Text =
     """
     .. nothingRef
     .. """
-     :
+    :
     """
     .. justRef
     .. """
@@ -448,7 +447,7 @@ nativeDefinitions as Text =
     """
     .. nothingRef
     .. """
-     :
+    :
     """
     .. justRef
     .. """
@@ -506,7 +505,7 @@ nativeDefinitions as Text =
     """
     .. nothingRef
     .. """
-     :
+    :
     """
     .. justRef
     .. """
@@ -590,23 +589,32 @@ nativeDefinitions as Text =
 
             const actualTypeHumanized = sp_toHuman(pars.type);
             if (re(actualTypeHumanized) !== re(requestedTypeHumanized)) {
-                return """ .. errRef .. """(pars.type);
-            }
+                return
+    """
+    .. errRef
+    .. """
+    (pars.type);
+                }
 
-            const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');
+                const tUsrToString = (tUsr) => array_fromList(tUsr).join('$');
 
-            const js = c0$BuildInfo$compile(arrayToListLow([]), pars);
+                const js = c0$BuildInfo$compile(arrayToListLow([]), pars);
 
-            //   { name1, name2, name3, ... } = externals;
-            const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';
+                //   { name1, name2, name3, ... } = externals;
+                const unpackExterns = ''; //'const { ' + pars.externalValues.map((e) => tUsrToString(e.usr)).join(', ') + ' } = externs;';
 
-            const body = `{ ${unpackExterns}\n${js}; return ${tUsrToString(pars.entryUsr)}; }`;
+                const body = `{ ${unpackExterns}\n${js}; return ${tUsrToString(pars.entryUsr)}; }`;
 
-            const arg = {};
-            //pars.externalValues.forEach((e) => arg[tUsrToString(e.usr)] = e.self.value);
+                const arg = {};
+                //pars.externalValues.forEach((e) => arg[tUsrToString(e.usr)] = e.self.value);
 
-            return """ .. okRef .. """ (variantConstructor(Function('externs', body)(arg)));
-        };
+                return
+    """
+    .. okRef
+    .. """
+    (variantConstructor(Function('externs', body)(arg)));
+           };
+
 
 
     """

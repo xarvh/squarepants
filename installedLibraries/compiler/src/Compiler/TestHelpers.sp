@@ -58,23 +58,25 @@ resErrorToStrippedText as fn Res a: Result Text a =
 #
 # Meta
 #
+coreGlobalSymbols =
+    [
+    , "Number"
+    , "Text"
+    , "Bool"
+    , "'true"
+    , "'false"
+    , "None"
+    , "'none"
+    ]
+
+
 imports as Imports =
-    pars as ImportsFile.ToImportsPars =
-        {
-        , getSourceDirId = fn importsDir, sourceDir: 1
-        , importsPath
-        , joinPath = Path.join
-        }
-
-    try ImportsFile.toImports pars DefaultImports.defaultImportsFile as
-
-        'err e:
-            log "Error in DefaultImports.sp: " e
-
-            todo "error loading DefaultImports.sp"
-
-        'ok m:
-            m
+    {
+    , globalNameToLocation = List.for Dict.empty coreGlobalSymbols (fn acc, symbol: Dict.insert acc symbol (Meta.'locationSourceDir CoreDefs.umr))
+    , moduleAliasToLocation = Dict.ofOne "Core" (Meta.'locationSourceDir CoreDefs.umr)
+    , modulePathToLocation = Dict.empty
+    , platforms = Dict.empty
+    }
 
 
 #

@@ -171,7 +171,7 @@ lineToBlock as fn Line: Block =
     'singleLine 'noRequiredBreaks (mkIndentedLine x)
 
 
-textToBlock as fn Text: Fmt.Block =
+textToBlock as fn Text: Block =
     fn f: f >> 'text_ >> lineToBlock
 
 

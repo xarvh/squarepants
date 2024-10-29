@@ -14,26 +14,24 @@ var IntegerOnly =
     , 'integer Int
 
 
-load as fn a: Result TA.RawType IntegerOnly =
+load as fn a: Result EA.RawType IntegerOnly =
     fn _:
-    usr as USR =
-        'USR ('UMR Meta.'user 5 "DynamicLoad") "aNumberValue"
 
     translatedUsr =
-        EA.translateUsr usr
+        [ "u", "5", "DynamicLoad", "aNumberValue" ]
 
     numberSelf =
         sp_introspect_type Number
 
-    numberType as TA.RawType =
-        TA.'typeExact Pos.'t numberSelf.usr []
+    numberType as EA.RawType =
+        todo "EA.'typeExact numberSelf.usr []"
 
     def as EA.GlobalDefinition =
         {
-        , deps = Dict.empty
+#        , deps = Dict.empty
         , expr = EA.'literalNumber 42
-        , freeTyvars = Dict.empty
-        , freeUnivars = Dict.empty
+#        , freeTyvars = Dict.empty
+#        , freeUnivars = Dict.empty
         , type = numberType
         , usr = translatedUsr
         }

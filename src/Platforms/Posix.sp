@@ -5,7 +5,7 @@ platform as Platform =
     , compile = Platforms/Browser.compile
     , defaultImportsFile
     , defaultOutputName = "nodeExecutable.js"
-    , extraRequiredUsrs = fn _: []
+    , extraRequiredSymbols = []
     , makeExecutable
     , name = "posix"
     , quickstart = "TODO"
@@ -21,9 +21,8 @@ defaultImportsFile as ImportsFile =
         ]
 
 
-makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
-    fn makePlatformUmr:
-    fn out:
+makeExecutable as fn Platform.GetPlatformsTranslatedUsr, Self.LoadPars: Text =
+    fn getPlatformsTranslatedUsr, out:
 
     entryName =
         Targets/Javascript/EmittableToJs._usrToText out.entryUsr
@@ -48,7 +47,7 @@ makeExecutable as fn Platform.MakeUmr: fn Self.LoadPars: Text =
                 {
                 , constructors = out.constructors
                 , eaDefs = out.defs
-                , platformOverrides = overrides makePlatformUmr
+                , platformOverrides = overrides getPlatformsTranslatedUsr
                 }
 
         #log "Emitting JS..." ""
@@ -76,13 +75,13 @@ header as Text =
     """
 
 
-overrides as fn Platform.MakeUmr: [ USR & Text ] =
-    fn makePlatformUmr:
+overrides as fn Platform.GetPlatformsTranslatedUsr: [ EA.TranslatedUsr & Text ] =
+    fn getPlatformsTranslatedUsr:
     ioModule =
-        'USR (makePlatformUmr "IO") __
+        getPlatformsTranslatedUsr "IO" __
 
     pathModule =
-        'USR (makePlatformUmr "Path") __
+        getPlatformsTranslatedUsr "Path" __
 
     [
     , ioModule "parallel" & "io_parallel"
@@ -100,10 +99,14 @@ overrides as fn Platform.MakeUmr: [ USR & Text ] =
 
 runtime as Text =
     makeOk as Text =
-        'USR (CoreDefs.makeUmr "Result") "'ok" >> Targets/Javascript/EmittableToJs.translateUsrToText __
+        'USR (CoreDefs.makeUmr "Result") "'ok"
+        >> Compiler/MakeEmittable.translateUsr
+        >> Targets/Javascript/EmittableToJs.translateUsrToText __
 
     makeErr as Text =
-        'USR (CoreDefs.makeUmr "Result") "'err" >> Targets/Javascript/EmittableToJs.translateUsrToText __
+        'USR (CoreDefs.makeUmr "Result") "'err"
+        >> Compiler/MakeEmittable.translateUsr
+        >> Targets/Javascript/EmittableToJs.translateUsrToText __
 
     """
 

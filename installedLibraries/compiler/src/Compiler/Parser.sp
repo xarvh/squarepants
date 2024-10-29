@@ -535,7 +535,7 @@ expressionWithUnambiguousStart as fn Env: Parser FA.Expression =
                         FA.'introspect introspect maybeModule name >> expressionOk
 
                     _:
-                        Parser.abort "innvalid introspect expression"
+                        Parser.abort "invalid introspect expression"
 
             _:
                 Parser.reject

@@ -3,23 +3,24 @@
 #
 LoadPars =
     {
-    , constructors as [ USR & TA.RawType ]
+    , constructors as [ EA.TranslatedUsr & EA.RawType ]
     , defs as [ EA.GlobalDefinition ]
     , entryUsr as EA.TranslatedUsr
-    , type as TA.RawType
+    , type as EA.RawType
     }
 
 
-load as fn LoadPars, fn specific: general: Result TA.RawType general =
+#
+# ************ DANGER ************
+#
+# If you use this, --> ALL NORMAL GUARANTEES OF THE LANGUAGE ARE OFF <--
+# Unless you VERY MUCH know what you're doing, don't use it.
+# Let the compiler library wrap it for you instead.
+#
+# TODO rename it to something more scary?
+#
+load as fn LoadPars, fn specific: general: Result EA.RawType general =
     this_is_sp_native
-
-#    # This is here to add the dependency
-#    BuildInfo.compile
-#
-#    load_internal
-#
-#
-#load_internal as fn LoadPars, fn specific: general: Result TA.RawType general =
 
 
 internalRepresentation as fn a: Text with a NonFunction =
@@ -43,53 +44,15 @@ internalRepresentation as fn a: Text with a NonFunction =
 #]
 
 var Def =
-    , 'value CA.ValueDef
-    , 'openVarType CA.VariantTypeDef
-    , 'openAliasType CA.AliasDef
-    , 'opaqueType CA.VariantTypeDef
+    , 'value #CA.ValueDef
+    , 'openVarType #CA.VariantTypeDef
+    , 'openAliasType #CA.AliasDef
+    , 'opaqueType #CA.VariantTypeDef
 
 
 Self =
-    {
-    , def as Def
-    , usr as USR
-    }
-
-
-toCaModules as fn [ Self ]: Dict UMR CA.Module =
-    fn selfs:
-    List.for Dict.empty selfs fn modulesByUmr, self:
-        'USR umr name =
-            self.usr
-
-        mod0 =
-            try Dict.get umr modulesByUmr as
-                'just m: m
-                'nothing: CA.initModule "<internal>" umr ""
-
-        mod1 =
-            try self.def as
-
-                'value def:
-                    maybeBody =
-                        'nothing
-
-                    directDeps =
-                        # TODO split between "annotation dependencies" and "definition dependencies"?
-                        Dict.filter (__ == Meta.'typeDependency) def.directDeps
-
-                    { mod0 with valueDefs = Dict.insert .valueDefs name { def with directDeps, maybeBody } }
-
-                'openVarType def:
-                    { mod0 with
-                    , constructorDefs = todo "constructorDefs"
-                    , variantTypeDefs = Dict.insert .variantTypeDefs name def
-                    }
-
-                'openAliasType def:
-                    { mod0 with aliasDefs = Dict.insert .aliasDefs name defaliasDefs }
-
-                'opaqueType def:
-                    { mod0 with variantTypeDefs = Dict.insert .variantTypeDefs name { def with constructors = Dict.empty } }
-
-        Dict.insert modulesByUmr umr mod1
+    EA.TranslatedUsr
+#    {
+#    , def as Def
+#    , usr as EA.TranslatedUsr
+#    }
